@@ -1,0 +1,92 @@
+version: '3'
+
+vars:
+  BINARY_NAME: tsl
+  LSP_BINARY_NAME: tsl-lsp
+  BUILD_DIR: bin
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  check:
+    desc: Run all checks (lint + test)
+    cmds:
+      - task: lint
+      - task: test
+
+  lint:
+    desc: Run golangci-lint
+    cmds:
+      - golangci-lint run ./...
+
+  lint:fix:
+    desc: Run golangci-lint with auto-fix
+    cmds:
+      - golangci-lint run --fix ./...
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  test:verbose:
+    desc: Run tests with verbose output
+    cmds:
+      - go test -v ./...
+
+  test:coverage:
+    desc: Run tests with coverage report
+    cmds:
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -html=coverage.out -o coverage.html
+      - echo "Coverage report generated: coverage.html"
+
+  test:race:
+    desc: Run tests with race detector
+    cmds:
+      - go test -race ./...
+
+  build:
+    desc: Build CLI binary
+    cmds:
+      - go build -o {{.BUILD_DIR}}/{{.BINARY_NAME}} ./cmd/tsl
+
+  build:lsp:
+    desc: Build LSP binary
+    cmds:
+      - go build -o {{.BUILD_DIR}}/{{.LSP_BINARY_NAME}} ./cmd/tsl-lsp
+
+  build:all:
+    desc: Build all binaries
+    cmds:
+      - task: build
+      - task: build:lsp
+
+  run:
+    desc: Run TotalScript file
+    cmds:
+      - go run ./cmd/tsl {{.CLI_ARGS}}
+
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf {{.BUILD_DIR}}
+      - rm -f coverage.out coverage.html
+
+  fmt:
+    desc: Format code
+    cmds:
+      - go fmt ./...
+
+  mod:tidy:
+    desc: Tidy go modules
+    cmds:
+      - go mod tidy
+
+  install:tools:
+    desc: Install development tools
+    cmds:
+      - go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
