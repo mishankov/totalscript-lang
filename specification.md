@@ -28,6 +28,7 @@ Source code for TotalScript is stored in files with `.tsl` extension.
 |------|-------------|
 | `function` | First-class function |
 | `model` | User-defined structured type |
+| `enum` | Enumeration with named values |
 
 ### Built-in Models
 | Model | Description |
@@ -94,6 +95,31 @@ const multiply = function (a: float, b: float) {
 }
 ```
 
+### Function Overloading
+
+Functions can have multiple signatures with different parameter types or counts:
+
+```tsl
+const greet = function (): string {
+  return "Hello!"
+}
+
+const greet = function (name: string): string {
+  return "Hello, " + name + "!"
+}
+
+const greet = function (name: string, formal: boolean): string {
+  if formal {
+    return "Good day, " + name + "."
+  }
+  return "Hey, " + name + "!"
+}
+
+greet()                     # "Hello!"
+greet("Alice")              # "Hello, Alice!"
+greet("Alice", true)        # "Good day, Alice."
+```
+
 ## Models
 
 Models are representations of complex types in TotalScript. Models are first class objects.
@@ -125,6 +151,50 @@ const Rectangle = model {
 }
 
 var s = Rectangle(3, 4).area() # 12
+```
+
+### Multiple Constructors
+
+Models can define multiple constructors with different signatures:
+
+```tsl
+const Point = model {
+  x: float
+  y: float
+
+  # Default constructor is auto-generated: Point(x, y)
+
+  # Additional constructor: create from single value
+  constructor = function(value: float) {
+    return Point(value, value)
+  }
+
+  # Additional constructor: create origin point
+  constructor = function() {
+    return Point(0, 0)
+  }
+}
+
+var p1 = Point(3, 4)      # Default constructor
+var p2 = Point(5)         # Single value, creates Point(5, 5)
+var p3 = Point()          # Origin, creates Point(0, 0)
+```
+
+```tsl
+const Color = model {
+  r: integer
+  g: integer
+  b: integer
+
+  # Constructor from hex string
+  constructor = function(hex: string) {
+    # Parse hex and create color
+    return Color(255, 128, 0)
+  }
+}
+
+var c1 = Color(255, 128, 0)   # RGB values
+var c2 = Color("#FF8000")     # From hex string
 ```
 
 ## Operators
@@ -177,11 +247,11 @@ var s = Rectangle(3, 4).area() # 12
 ### Conditionals
 ```tsl
 if x > 0 {
-  print("positive")
+  println("positive")
 } else if x < 0 {
-  print("negative")
+  println("negative")
 } else {
-  print("zero")
+  println("zero")
 }
 
 # Ternary expression
@@ -192,16 +262,16 @@ var status = if age >= 18 { "adult" } else { "minor" }
 ```tsl
 switch value {
   case 1 {
-    print("one")
+    println("one")
   }
   case 2, 3 {
-    print("two or three")
+    println("two or three")
   }
   case 4..10 {
-    print("four to nine")
+    println("four to nine")
   }
   default {
-    print("something else")
+    println("something else")
   }
 }
 
@@ -220,33 +290,33 @@ var name = switch code {
 ```tsl
 # Iterate over array (value only)
 for item in [1, 2, 3] {
-  print(item)
+  println(item)
 }
 
 # Iterate over array with index
 for index, item in [1, 2, 3] {
-  print(index, item)     # 0 1, 1 2, 2 3
+  println(index, item)     # 0 1, 1 2, 2 3
 }
 
 # Iterate over range
 for i in 0..10 {        # 0 to 9 (exclusive end)
-  print(i)
+  println(i)
 }
 
 for i in 0..=10 {       # 0 to 10 (inclusive end)
-  print(i)
+  println(i)
 }
 
 # Iterate over map
 for key, value in {"a": 1, "b": 2} {
-  print(key, value)
+  println(key, value)
 }
 ```
 
 #### C-style for loop
 ```tsl
 for var i = 0; i < 10; i += 1 {
-  print(i)
+  println(i)
 }
 ```
 
@@ -254,7 +324,7 @@ for var i = 0; i < 10; i += 1 {
 ```tsl
 var i = 0
 while i < 10 {
-  print(i)
+  println(i)
   i += 1
 }
 ```
@@ -268,7 +338,7 @@ for i in 0..100 {
   if i == 10 {
     break           # Exit loop
   }
-  print(i)
+  println(i)
 }
 ```
 
@@ -302,12 +372,12 @@ Use type checking to handle the result:
 var result = divide(10, 2)
 
 if result is Error {
-  print("Error: " + result.message)
+  println("Error: " + result.message)
   return
 }
 
 # Here result is narrowed to float
-print(result)
+println(result)
 ```
 
 ## Collections
@@ -344,13 +414,13 @@ arr.pop()                 # returns 4, arr is now [1, 2, 3]
 arr.insert(1, 10)         # arr is now [1, 10, 2, 3]
 arr.remove(1)             # removes at index 1, arr is now [1, 2, 3]
 arr.contains(2)           # true
-arr.indexOf(2)            # 1
+arr.indexOf(2)            # 1 (returns integer | Error, Error if not found)
 
 # Functional methods
 arr.map(function(x) { return x * 2 })           # [2, 4, 6]
 arr.filter(function(x) { return x > 1 })        # [2, 3]
 arr.reduce(0, function(acc, x) { return acc + x })  # 6
-arr.each(function(x) { print(x) })              # prints each element
+arr.each(function(x) { println(x) })              # prints each element
 ```
 
 ### Maps
@@ -393,7 +463,6 @@ m["c"] = 3            # m is now {"a": 1, "b": 2, "c": 3}
 
 ### Output
 ```tsl
-print("Hello")              # Prints without newline
 println("Hello")            # Prints with newline
 println("Name:", name)      # Multiple arguments separated by space
 ```
@@ -429,10 +498,14 @@ boolean(Point(0, 0))        # true (model instances are always truthy)
 ```tsl
 typeof(42)                  # "integer"
 typeof("hello")             # "string"
+typeof(true)                # "boolean"
 typeof([1, 2, 3])           # "array"
+typeof({"a": 1})            # "map"
+typeof(Point(1, 2))         # "Point" (returns model name for model instances)
 
 value is integer            # true if value is integer
 value is string             # true if value is string
+value is Point              # true if value is Point model instance
 value is Error              # true if value is Error model
 ```
 
@@ -450,18 +523,6 @@ s.startsWith("Hello")       # true
 s.endsWith("!")             # true
 s.replace("World", "TotalScript")  # "Hello, TotalScript!"
 s.substring(0, 5)           # "Hello"
-```
-
-### Math Functions
-```tsl
-abs(-5)                     # 5
-min(1, 2, 3)                # 1
-max(1, 2, 3)                # 3
-floor(3.7)                  # 3
-ceil(3.2)                   # 4
-round(3.5)                  # 4
-sqrt(16)                    # 4.0
-pow(2, 3)                   # 8.0
 ```
 
 ## Database
@@ -504,35 +565,41 @@ db.saveAll([point1, point2, point3])
 
 ### Querying Data
 
-Use pattern matching syntax with `db.find()`:
+Use pattern matching syntax with `db.find()`. Use `this.` prefix for model fields to distinguish from variables:
 
 ```tsl
 # Find all points where x > 5
 var points = db.find(Point) {
-  x > 5
+  this.x > 5
 }
 
 # Multiple conditions (AND)
 var points = db.find(Point) {
-  x > 0
-  y > 0
-  x < 100
+  this.x > 0
+  this.y > 0
+  this.x < 100
 }
 
 # OR conditions
 var points = db.find(Point) {
-  x > 100 || y > 100
+  this.x > 100 || this.y > 100
 }
 
 # Comparison operators: ==, !=, <, >, <=, >=
 var adults = db.find(User) {
-  age >= 18
+  this.age >= 18
 }
 
 # String matching
 var users = db.find(User) {
-  name.startsWith("A")
-  email.contains("@gmail.com")
+  this.name.startsWith("A")
+  this.email.contains("@gmail.com")
+}
+
+# Using variables (no prefix)
+var minAge = 18
+var adults = db.find(User) {
+  this.age >= minAge
 }
 ```
 
@@ -540,20 +607,20 @@ var users = db.find(User) {
 
 ```tsl
 # Order results
-var sorted = db.find(Point) { x > 0 } orderBy x
-var desc = db.find(Point) { x > 0 } orderBy x desc
+var sorted = db.find(Point) { this.x > 0 } orderBy x
+var desc = db.find(Point) { this.x > 0 } orderBy x desc
 
 # Limit results
-var top10 = db.find(User) { age >= 18 } orderBy age limit 10
+var top10 = db.find(User) { this.age >= 18 } orderBy age limit 10
 
 # Skip results (pagination)
 var page2 = db.find(User) {} orderBy name limit 10 offset 10
 
 # Get first match only (returns Model?, null if no match)
-var first = db.find(Point) { x > 5 } first
+var first = db.find(Point) { this.x > 5 } first
 
 # Count matches
-var count = db.find(User) { age >= 18 } count
+var count = db.find(User) { this.age >= 18 } count
 ```
 
 ### Querying Nested Models
@@ -566,9 +633,9 @@ const Circle = model {
 
 # Query through nested model fields
 var circles = db.find(Circle) {
-  center.x > 0
-  center.y > 0
-  radius >= 5
+  this.center.x > 0
+  this.center.y > 0
+  this.radius >= 5
 }
 ```
 
@@ -576,13 +643,13 @@ var circles = db.find(Circle) {
 
 ```tsl
 # Find and modify
-var user = db.find(User) { email == "alice@example.com" } first
+var user = db.find(User) { this.email == "alice@example.com" } first
 user.age = 31
 db.save(user)       # Updates existing record (same primary key)
 
 # Bulk update
-db.find(User) { age < 0 } update {
-  age = 0
+db.find(User) { this.age < 0 } update {
+  this.age = 0
 }
 ```
 
@@ -593,7 +660,7 @@ db.find(User) { age < 0 } update {
 db.delete(user)
 
 # Delete by query
-db.find(User) { age < 18 } delete
+db.find(User) { this.age < 18 } delete
 
 # Delete all instances of a model
 db.deleteAll(User)
@@ -605,7 +672,7 @@ db.deleteAll(User)
 db.transaction {
   db.save(user1)
   db.save(user2)
-  db.find(Point) { x < 0 } delete
+  db.find(Point) { this.x < 0 } delete
 }
 # All operations succeed or all fail
 ```
@@ -646,7 +713,7 @@ server.put("/users/:id", function(req: Request): Response {
 
 server.delete("/users/:id", function(req: Request): Response {
   var id = req.params["id"]
-  db.find(User) { email == id } delete
+  db.find(User) { this.email == id } delete
   return Response(204)
 })
 ```
@@ -892,22 +959,80 @@ println(geo.PI)                   # 3.14159
 
 | Module | Description |
 |--------|-------------|
-| `math` | Mathematical functions (sin, cos, tan, log, etc.) |
+| `math` | Mathematical functions and constants |
 | `json` | JSON parsing and serialization |
 | `time` | Date, time, and duration utilities |
 | `fs` | File system operations |
 | `os` | Operating system utilities, environment variables |
 | `crypto` | Hashing and encryption utilities |
 
+#### math module
 ```tsl
 import math
+
+# Constants
+math.PI                     # 3.14159...
+math.E                      # 2.71828...
+
+# Basic functions
+math.abs(-5)                # 5
+math.min(1, 2, 3)           # 1
+math.max(1, 2, 3)           # 3
+math.floor(3.7)             # 3
+math.ceil(3.2)              # 4
+math.round(3.5)             # 4
+math.sqrt(16)               # 4.0
+math.pow(2, 3)              # 8.0
+
+# Trigonometric functions
+math.sin(math.PI / 2)       # 1.0
+math.cos(0)                 # 1.0
+math.tan(0)                 # 0.0
+
+# Logarithmic functions
+math.log(math.E)            # 1.0
+math.log10(100)             # 2.0
+```
+
+#### json module
+```tsl
 import json
-import time
+
+# Parse JSON string (returns map | Error)
+var data = json.parse("{\"key\": \"value\"}")
+if data is Error {
+  println("Invalid JSON")
+}
+
+# Serialize to JSON string
+var str = json.stringify({"name": "Alice", "age": 30})
+```
+
+#### fs module
+```tsl
 import fs
 
-var angle = math.sin(math.PI / 2)
-var data = json.parse("{\"key\": \"value\"}")
-var now = time.now()
+# Read file (returns string | Error)
 var content = fs.readFile("./data.txt")
+if content is Error {
+  println("File not found")
+}
+
+# Write file (returns null | Error)
+var err = fs.writeFile("./output.txt", "Hello")
+
+# Check if file exists
+fs.exists("./data.txt")     # true or false
+
+# List directory
+var files = fs.listDir("./")  # array<string> | Error
+```
+
+#### time module
+```tsl
+import time
+
+var now = time.now()        # Current timestamp
+time.sleep(1000)            # Sleep for 1000 milliseconds
 ```
 
