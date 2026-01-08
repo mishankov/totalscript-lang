@@ -28,7 +28,13 @@ Source code for TotalScript is stored in files with `.tsl` extension.
 |------|-------------|
 | `function` | First-class function |
 | `model` | User-defined structured type |
-| `result` | Success or error wrapper |
+
+### Built-in Models
+| Model | Description |
+|-------|-------------|
+| `Error` | Error with `message: string` field |
+| `Request` | HTTP request (see HTTP section) |
+| `Response` | HTTP response (see HTTP section) |
 
 ### Optional Types
 Any type can be made nullable by adding `?` suffix:
@@ -113,12 +119,12 @@ const Rectangle = model {
   a: float
   b: float
 
-  square = function() {
+  area = function() {
     return this.a * this.b
   }
 }
 
-var s = Rectangle(3, 4).square() # 12
+var s = Rectangle(3, 4).area() # 12
 ```
 
 ## Operators
@@ -357,11 +363,16 @@ var empty: map<string, integer> = {}
 ```
 
 #### Accessing Values
+Accessing a map key returns an optional type (`V?`). Missing keys return `null`.
 ```tsl
 var user = {"name": "Alice", "age": 30}
 
 user["name"]          # "Alice"
 user["missing"]       # null (key doesn't exist)
+
+# Type: map<string, integer> access returns integer?
+var counts = {"a": 1, "b": 2}
+var val = counts["c"]   # val is integer?, value is null
 ```
 
 #### Map Methods
@@ -405,11 +416,13 @@ string(42)                  # "42"
 string(3.14)                # "3.14"
 string(true)                # "true"
 
-# boolean() returns boolean | Error
+# boolean() always succeeds (truthiness-based)
 boolean(0)                  # false
-boolean(1)                  # true
+boolean(1)                  # true (any non-zero number)
 boolean("")                 # false
-boolean("any")              # true
+boolean("any")              # true (any non-empty string)
+boolean(null)               # false
+boolean(Point(0, 0))        # true (model instances are always truthy)
 ```
 
 ### Type Checking
@@ -536,7 +549,7 @@ var top10 = db.find(User) { age >= 18 } orderBy age limit 10
 # Skip results (pagination)
 var page2 = db.find(User) {} orderBy name limit 10 offset 10
 
-# Get first match only (returns single instance or null)
+# Get first match only (returns Model?, null if no match)
 var first = db.find(Point) { x > 5 } first
 
 # Count matches
@@ -617,6 +630,9 @@ server.get("/users", function(req: Request): Response {
 
 server.post("/users", function(req: Request): Response {
   var data = req.json()
+  if data is Error {
+    return Response(400, {"error": data.message})
+  }
   var user = User(data["email"], data["name"], data["age"])
   db.save(user)
   return Response(201, user)
@@ -676,9 +692,16 @@ Response(301, "", {"Location": ["/new-path"]})
 
 #### Making Requests
 
+All client methods return `Response | Error` (network errors return Error).
+
 ```tsl
 # GET request
 var res = client.get("https://api.example.com/users")
+if res is Error {
+  println("Network error:", res.message)
+  return
+}
+println(res.status)   # 200
 
 # POST request with JSON body
 var res = client.post("https://api.example.com/users", {
