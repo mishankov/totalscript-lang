@@ -756,6 +756,74 @@ server.use(function(req: Request, next: function): Response {
 })
 ```
 
+## Enums
+
+Enums define a type with a fixed set of named values. Each enum has an underlying simple type and all values must be explicitly specified.
+
+### Defining Enums
+
+```tsl
+# Integer enum
+const HttpStatus = enum {
+  OK = 200
+  NotFound = 404
+  ServerError = 500
+}
+
+# String enum
+const Direction = enum {
+  North = "N"
+  South = "S"
+  East = "E"
+  West = "W"
+}
+
+# Boolean enum
+const Feature = enum {
+  Enabled = true
+  Disabled = false
+}
+```
+
+### Using Enums
+
+```tsl
+var status = HttpStatus.OK
+var dir = Direction.North
+
+# Comparison
+if status == HttpStatus.OK {
+  println("Success")
+}
+
+# Get underlying value
+println(status.value)       # 200
+println(dir.value)          # "N"
+
+# Switch on enum
+switch status {
+  case HttpStatus.OK {
+    println("OK")
+  }
+  case HttpStatus.NotFound {
+    println("Not found")
+  }
+  default {
+    println("Other status")
+  }
+}
+```
+
+### Enum Methods
+
+```tsl
+Direction.values()              # [Direction.North, Direction.South, Direction.East, Direction.West]
+
+# Get enum from value
+var s = HttpStatus.fromValue(404)    # HttpStatus.NotFound | Error
+var d = Direction.fromValue("N")     # Direction.North | Error
+```
+
 ## Modules and Imports
 
 Each `.tsl` file is a module. All top-level declarations (variables, constants, functions, models) are automatically exported.
