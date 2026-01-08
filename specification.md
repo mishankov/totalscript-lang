@@ -756,3 +756,90 @@ server.use(function(req: Request, next: function): Response {
 })
 ```
 
+## Modules and Imports
+
+Each `.tsl` file is a module. All top-level declarations (variables, constants, functions, models) are automatically exported.
+
+### Importing Modules
+
+```tsl
+# Import standard library module
+import math
+
+# Import local file (relative path with ./)
+import ./utils
+import ./lib/helpers
+
+# Import with alias
+import math as m
+import ./utils as u
+```
+
+### Accessing Imported Items
+
+Imported items are accessed via the module name (qualified access):
+
+```tsl
+import math
+import ./geometry as geo
+
+var x = math.sin(3.14)
+var y = math.cos(0)
+var area = geo.circleArea(5.0)
+```
+
+### Module File Example
+
+```tsl
+# File: ./geometry.tsl
+
+const PI = 3.14159
+
+const circleArea = function(radius: float): float {
+  return PI * radius ** 2
+}
+
+const Rectangle = model {
+  width: float
+  height: float
+
+  area = function(): float {
+    return this.width * this.height
+  }
+}
+```
+
+```tsl
+# File: main.tsl
+
+import ./geometry as geo
+
+var area = geo.circleArea(10.0)
+var rect = geo.Rectangle(5.0, 3.0)
+println(rect.area())              # 15.0
+println(geo.PI)                   # 3.14159
+```
+
+### Standard Library Modules
+
+| Module | Description |
+|--------|-------------|
+| `math` | Mathematical functions (sin, cos, tan, log, etc.) |
+| `json` | JSON parsing and serialization |
+| `time` | Date, time, and duration utilities |
+| `fs` | File system operations |
+| `os` | Operating system utilities, environment variables |
+| `crypto` | Hashing and encryption utilities |
+
+```tsl
+import math
+import json
+import time
+import fs
+
+var angle = math.sin(math.PI / 2)
+var data = json.parse("{\"key\": \"value\"}")
+var now = time.now()
+var content = fs.readFile("./data.txt")
+```
+
