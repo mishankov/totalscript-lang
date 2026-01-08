@@ -451,3 +451,149 @@ sqrt(16)                    # 4.0
 pow(2, 3)                   # 8.0
 ```
 
+## Database
+
+TotalScript includes built-in SQLite database support. Every model can be persisted to its own table.
+
+The `db` object is globally available. The database file is created automatically (default: `data.db`) or can be specified via CLI argument `--db=myapp.db`.
+
+### Model Annotations
+
+#### Primary Key (@id)
+Mark a field as the primary key with `@id`. If no field is marked, an `_id` field with UUID is automatically added.
+
+```tsl
+const User = model {
+  @id email: string     # email is the primary key
+  name: string
+  age: integer
+}
+
+const Point = model {
+  x: float
+  y: float
+}
+# Point automatically gets _id: string (UUID) as primary key
+```
+
+### Saving Data
+
+```tsl
+var user = User("alice@example.com", "Alice", 30)
+db.save(user)
+
+var point = Point(3.0, 4.0)
+db.save(point)      # _id is auto-generated
+
+# Save multiple instances
+db.saveAll([point1, point2, point3])
+```
+
+### Querying Data
+
+Use pattern matching syntax with `db.find()`:
+
+```tsl
+# Find all points where x > 5
+var points = db.find(Point) {
+  x > 5
+}
+
+# Multiple conditions (AND)
+var points = db.find(Point) {
+  x > 0
+  y > 0
+  x < 100
+}
+
+# OR conditions
+var points = db.find(Point) {
+  x > 100 || y > 100
+}
+
+# Comparison operators: ==, !=, <, >, <=, >=
+var adults = db.find(User) {
+  age >= 18
+}
+
+# String matching
+var users = db.find(User) {
+  name.startsWith("A")
+  email.contains("@gmail.com")
+}
+```
+
+### Query Modifiers
+
+```tsl
+# Order results
+var sorted = db.find(Point) { x > 0 } orderBy x
+var desc = db.find(Point) { x > 0 } orderBy x desc
+
+# Limit results
+var top10 = db.find(User) { age >= 18 } orderBy age limit 10
+
+# Skip results (pagination)
+var page2 = db.find(User) {} orderBy name limit 10 offset 10
+
+# Get first match only (returns single instance or null)
+var first = db.find(Point) { x > 5 } first
+
+# Count matches
+var count = db.find(User) { age >= 18 } count
+```
+
+### Querying Nested Models
+
+```tsl
+const Circle = model {
+  center: Point
+  radius: float
+}
+
+# Query through nested model fields
+var circles = db.find(Circle) {
+  center.x > 0
+  center.y > 0
+  radius >= 5
+}
+```
+
+### Updating Data
+
+```tsl
+# Find and modify
+var user = db.find(User) { email == "alice@example.com" } first
+user.age = 31
+db.save(user)       # Updates existing record (same primary key)
+
+# Bulk update
+db.find(User) { age < 0 } update {
+  age = 0
+}
+```
+
+### Deleting Data
+
+```tsl
+# Delete single instance
+db.delete(user)
+
+# Delete by query
+db.find(User) { age < 18 } delete
+
+# Delete all instances of a model
+db.deleteAll(User)
+```
+
+### Transactions
+
+```tsl
+db.transaction {
+  db.save(user1)
+  db.save(user2)
+  db.find(Point) { x < 0 } delete
+}
+# All operations succeed or all fail
+```
+
