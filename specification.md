@@ -597,3 +597,139 @@ db.transaction {
 # All operations succeed or all fail
 ```
 
+## HTTP
+
+TotalScript provides built-in HTTP server and client via global `server` and `client` objects.
+
+### HTTP Server
+
+#### Defining Routes
+
+```tsl
+server.get("/", function(req: Request): Response {
+  return Response(200, "Hello, World!")
+})
+
+server.get("/users", function(req: Request): Response {
+  var users = db.find(User) {}
+  return Response(200, users)    # Auto-converts to JSON
+})
+
+server.post("/users", function(req: Request): Response {
+  var data = req.json()
+  var user = User(data["email"], data["name"], data["age"])
+  db.save(user)
+  return Response(201, user)
+})
+
+server.put("/users/:id", function(req: Request): Response {
+  var id = req.params["id"]
+  # ...
+  return Response(200, user)
+})
+
+server.delete("/users/:id", function(req: Request): Response {
+  var id = req.params["id"]
+  db.find(User) { email == id } delete
+  return Response(204)
+})
+```
+
+#### Starting the Server
+
+```tsl
+server.start(8080)              # Blocks and listens on port 8080
+```
+
+#### Request Object
+
+```tsl
+req.method                      # "GET", "POST", etc.
+req.path                        # "/users/123"
+req.params                      # Route params: map<string, string>
+req.query                       # Query params: map<string, array<string>>
+req.headers                     # Headers: map<string, array<string>>
+req.body                        # Raw body as string
+req.json()                      # Parse body as JSON, returns map | Error
+
+# Accessing multi-value fields
+req.query["tag"]                # ["a", "b"] for ?tag=a&tag=b
+req.query["page"][0]            # "1" for ?page=1
+req.headers["Accept"][0]        # "application/json"
+```
+
+#### Response Object
+
+```tsl
+Response(status)                          # Response with status only
+Response(status, body)                    # Response with body (string or model)
+Response(status, body, headers)           # Response with custom headers
+
+# Examples
+Response(200, "OK")
+Response(200, {"message": "success"})     # Map auto-converts to JSON
+Response(200, user)                       # Model auto-converts to JSON
+Response(301, "", {"Location": ["/new-path"]})
+```
+
+### HTTP Client
+
+#### Making Requests
+
+```tsl
+# GET request
+var res = client.get("https://api.example.com/users")
+
+# POST request with JSON body
+var res = client.post("https://api.example.com/users", {
+  "name": "Alice",
+  "email": "alice@example.com"
+})
+
+# Other methods
+var res = client.put(url, body)
+var res = client.patch(url, body)
+var res = client.delete(url)
+```
+
+#### Request with Headers
+
+```tsl
+var res = client.get("https://api.example.com/users", {
+  "Authorization": ["Bearer token123"]
+})
+
+var res = client.post(url, body, {
+  "Content-Type": ["application/json"],
+  "Authorization": ["Bearer token123"]
+})
+```
+
+#### Client Response
+
+```tsl
+res.status                      # Status code: 200, 404, etc.
+res.body                        # Raw body as string
+res.headers                     # Response headers: map<string, array<string>>
+res.json()                      # Parse body as JSON, returns map | Error
+res.ok                          # true if status is 2xx
+```
+
+### Static Files
+
+```tsl
+server.static("/assets", "./public")    # Serve ./public at /assets
+server.static("/", "./dist")            # Serve ./dist at root
+```
+
+### Middleware
+
+```tsl
+server.use(function(req: Request, next: function): Response {
+  println("Request:", req.method, req.path)
+  var res = next(req)
+  println("Response:", res.status)
+  return res
+})
+```
+
