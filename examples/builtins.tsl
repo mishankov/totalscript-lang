@@ -1,0 +1,23 @@
+println("Hello from println!")
+println("Multiple", "arguments", "work!")
+
+var x = 42
+println("x =", x)
+
+println("typeof(x) =", typeof(x))
+println("typeof(\"hello\") =", typeof("hello"))
+println("typeof(true) =", typeof(true))
+
+var s = string(123)
+println("string(123) =", s)
+
+var i = integer("456")
+println("integer(\"456\") =", i)
+
+var f = float("3.14")
+println("float(\"3.14\") =", f)
+
+var b = boolean(0)
+println("boolean(0) =", b)
+var b2 = boolean(1)
+println("boolean(1) =", b2)

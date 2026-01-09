@@ -97,6 +97,12 @@ linters:
         linters:
           - gochecknoglobals
 
+      # Built-in function globals are intentional
+      - path: internal/stdlib/builtins\.go
+        text: "(Println|Typeof|Integer|Float|String|Boolean) is a global variable"
+        linters:
+          - gochecknoglobals
+
       # CLI file reading is expected behavior
       - path: cmd/tsl/main\.go
         text: "G304"

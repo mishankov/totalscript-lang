@@ -27,6 +27,7 @@ const (
 	MAP_OBJ          ObjectType = "MAP"
 	BREAK_OBJ        ObjectType = "BREAK"
 	CONTINUE_OBJ     ObjectType = "CONTINUE"
+	BUILTIN_OBJ      ObjectType = "BUILTIN"
 )
 
 // Object is the interface for all runtime values.
@@ -112,6 +113,18 @@ func (f *Function) Inspect() string {
 	return out.String()
 }
 
+// BuiltinFunction is the type for built-in function implementations.
+type BuiltinFunction func(args ...Object) Object
+
+// Builtin represents a built-in function.
+type Builtin struct {
+	Name string
+	Fn   BuiltinFunction
+}
+
+func (b *Builtin) Type() ObjectType { return BUILTIN_OBJ }
+func (b *Builtin) Inspect() string  { return "builtin function: " + b.Name }
+
 // Array represents an array.
 type Array struct {
 	Elements []Object
@@ -171,14 +184,19 @@ var (
 
 // IsTruthy returns whether an object is considered truthy.
 func IsTruthy(obj Object) bool {
-	switch obj {
-	case NULL:
+	switch obj := obj.(type) {
+	case *Null:
 		return false
-	case TRUE:
-		return true
-	case FALSE:
-		return false
+	case *Boolean:
+		return obj.Value
+	case *Integer:
+		return obj.Value != 0
+	case *Float:
+		return obj.Value != 0.0
+	case *String:
+		return obj.Value != ""
 	default:
+		// Arrays, Maps, Functions, and other types are always truthy
 		return true
 	}
 }

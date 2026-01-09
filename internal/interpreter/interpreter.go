@@ -616,19 +616,23 @@ func evalExpressions(exps []ast.Expression, env *Environment) []Object {
 }
 
 func applyFunction(fn Object, args []Object) Object {
-	function, ok := fn.(*Function)
-	if !ok {
+	switch fn := fn.(type) {
+	case *Function:
+		if len(args) != len(fn.Parameters) {
+			return newError("wrong number of arguments: expected %d, got %d",
+				len(fn.Parameters), len(args))
+		}
+
+		extendedEnv := extendFunctionEnv(fn, args)
+		evaluated := Eval(fn.Body, extendedEnv)
+		return unwrapReturnValue(evaluated)
+
+	case *Builtin:
+		return fn.Fn(args...)
+
+	default:
 		return newError("not a function: %s", fn.Type())
 	}
-
-	if len(args) != len(function.Parameters) {
-		return newError("wrong number of arguments: expected %d, got %d",
-			len(function.Parameters), len(args))
-	}
-
-	extendedEnv := extendFunctionEnv(function, args)
-	evaluated := Eval(function.Body, extendedEnv)
-	return unwrapReturnValue(evaluated)
 }
 
 func extendFunctionEnv(fn *Function, args []Object) *Environment {

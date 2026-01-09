@@ -8,6 +8,7 @@ import (
 	"github.com/mishankov/totalscript-lang/internal/interpreter"
 	"github.com/mishankov/totalscript-lang/internal/lexer"
 	"github.com/mishankov/totalscript-lang/internal/parser"
+	"github.com/mishankov/totalscript-lang/internal/stdlib"
 )
 
 const version = "0.1.0"
@@ -66,6 +67,7 @@ func runFile(filename string) {
 
 	// Interpret
 	env := interpreter.NewEnvironment()
+	stdlib.RegisterBuiltins(env)
 	result := interpreter.Eval(program, env)
 
 	if result != nil && result.Type() == interpreter.ERROR_OBJ {
