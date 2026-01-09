@@ -28,6 +28,7 @@ const (
 	BREAK_OBJ        ObjectType = "BREAK"
 	CONTINUE_OBJ     ObjectType = "CONTINUE"
 	BUILTIN_OBJ      ObjectType = "BUILTIN"
+	BOUND_METHOD_OBJ ObjectType = "BOUND_METHOD"
 )
 
 // Object is the interface for all runtime values.
@@ -124,6 +125,15 @@ type Builtin struct {
 
 func (b *Builtin) Type() ObjectType { return BUILTIN_OBJ }
 func (b *Builtin) Inspect() string  { return "builtin function: " + b.Name }
+
+// BoundMethod represents a method bound to a receiver object.
+type BoundMethod struct {
+	Receiver Object
+	Method   BuiltinFunction
+}
+
+func (bm *BoundMethod) Type() ObjectType { return BOUND_METHOD_OBJ }
+func (bm *BoundMethod) Inspect() string  { return "bound method" }
 
 // Array represents an array.
 type Array struct {

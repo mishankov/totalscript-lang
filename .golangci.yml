@@ -85,6 +85,12 @@ linters:
         linters:
           - gochecknoglobals
 
+      # Method registry global is intentional
+      - path: internal/interpreter/interpreter\.go
+        text: "methodRegistry is a global variable"
+        linters:
+          - gochecknoglobals
+
       # Parser precedence table is intentional global
       - path: internal/parser/parser\.go
         text: "precedences is a global variable"

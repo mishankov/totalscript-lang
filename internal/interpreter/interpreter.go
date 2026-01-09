@@ -630,6 +630,13 @@ func applyFunction(fn Object, args []Object) Object {
 	case *Builtin:
 		return fn.Fn(args...)
 
+	case *BoundMethod:
+		// Prepend the receiver as the first argument
+		methodArgs := make([]Object, 0, len(args)+1)
+		methodArgs = append(methodArgs, fn.Receiver)
+		methodArgs = append(methodArgs, args...)
+		return fn.Method(methodArgs...)
+
 	default:
 		return newError("not a function: %s", fn.Type())
 	}
@@ -737,9 +744,19 @@ func evalMemberExpression(node *ast.MemberExpression, env *Environment) Object {
 		return object
 	}
 
-	// For now, we don't support member access
-	// This would require implementing methods on types
-	return newError("member access not yet supported")
+	memberName := node.Member.Value
+
+	// Look up method for this object type
+	method := getMethod(object.Type(), memberName)
+	if method == nil {
+		return newError("undefined method '%s' for type %s", memberName, object.Type())
+	}
+
+	// Return a bound method that includes the receiver
+	return &BoundMethod{
+		Receiver: object,
+		Method:   method,
+	}
 }
 
 func evalRangeExpression(node *ast.RangeExpression, env *Environment) Object {
@@ -810,4 +827,23 @@ func nativeBoolToBooleanObject(input bool) *Boolean {
 
 func newError(format string, a ...interface{}) *Error {
 	return &Error{Message: fmt.Sprintf(format, a...)}
+}
+
+// methodRegistry stores methods for each object type
+var methodRegistry = make(map[ObjectType]map[string]BuiltinFunction)
+
+// RegisterMethod registers a method for a given object type.
+func RegisterMethod(objType ObjectType, name string, method BuiltinFunction) {
+	if methodRegistry[objType] == nil {
+		methodRegistry[objType] = make(map[string]BuiltinFunction)
+	}
+	methodRegistry[objType][name] = method
+}
+
+// getMethod retrieves a method for a given object type and method name.
+func getMethod(objType ObjectType, name string) BuiltinFunction {
+	if methods, ok := methodRegistry[objType]; ok {
+		return methods[name]
+	}
+	return nil
 }

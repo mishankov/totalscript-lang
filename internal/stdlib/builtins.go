@@ -137,3 +137,11 @@ func RegisterBuiltins(env *interpreter.Environment) {
 		env.Set(name, builtin)
 	}
 }
+
+// RegisterMethods registers all built-in methods for object types.
+func RegisterMethods() {
+	// Register string methods
+	for name, method := range StringMethods() {
+		interpreter.RegisterMethod(interpreter.STRING_OBJ, name, method)
+	}
+}

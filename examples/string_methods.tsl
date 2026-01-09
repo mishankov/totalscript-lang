@@ -1,0 +1,28 @@
+var s = "Hello, World!"
+
+println("Original:", s)
+println("Length:", s.length())
+println("Upper:", s.upper())
+println("Lower:", s.lower())
+
+var s2 = "  spaces  "
+println("Trim '", s2, "' => '", s2.trim(), "'")
+
+var s3 = "a,b,c,d"
+var parts = s3.split(",")
+println("Split:", parts)
+
+println("Contains 'World':", s.contains("World"))
+println("Contains 'xyz':", s.contains("xyz"))
+
+println("StartsWith 'Hello':", s.startsWith("Hello"))
+println("StartsWith 'Goodbye':", s.startsWith("Goodbye"))
+
+println("EndsWith '!':", s.endsWith("!"))
+println("EndsWith '?':", s.endsWith("?"))
+
+var s4 = s.replace("World", "TotalScript")
+println("Replace:", s4)
+
+var sub = s.substring(0, 5)
+println("Substring(0, 5):", sub)

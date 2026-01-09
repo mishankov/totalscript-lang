@@ -14,6 +14,9 @@ import (
 const version = "0.1.0"
 
 func main() {
+	// Register methods for built-in types
+	stdlib.RegisterMethods()
+
 	if len(os.Args) < 2 {
 		printUsage()
 		os.Exit(1)
