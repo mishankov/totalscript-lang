@@ -15,16 +15,16 @@ type ObjectType string
 // ObjectType constants define all runtime value types.
 const (
 	// INTEGER_OBJ represents an integer value.
-	INTEGER_OBJ      ObjectType = "INTEGER"
-	FLOAT_OBJ        ObjectType = "FLOAT"
-	STRING_OBJ       ObjectType = "STRING"
-	BOOLEAN_OBJ      ObjectType = "BOOLEAN"
-	NULL_OBJ         ObjectType = "NULL"
-	RETURN_VALUE_OBJ ObjectType = "RETURN_VALUE"
-	ERROR_OBJ        ObjectType = "ERROR"
-	FUNCTION_OBJ     ObjectType = "FUNCTION"
-	ARRAY_OBJ        ObjectType = "ARRAY"
-	MAP_OBJ          ObjectType = "MAP"
+	INTEGER_OBJ        ObjectType = "INTEGER"
+	FLOAT_OBJ          ObjectType = "FLOAT"
+	STRING_OBJ         ObjectType = "STRING"
+	BOOLEAN_OBJ        ObjectType = "BOOLEAN"
+	NULL_OBJ           ObjectType = "NULL"
+	RETURN_VALUE_OBJ   ObjectType = "RETURN_VALUE"
+	ERROR_OBJ          ObjectType = "ERROR"
+	FUNCTION_OBJ       ObjectType = "FUNCTION"
+	ARRAY_OBJ          ObjectType = "ARRAY"
+	MAP_OBJ            ObjectType = "MAP"
 	BREAK_OBJ          ObjectType = "BREAK"
 	CONTINUE_OBJ       ObjectType = "CONTINUE"
 	BUILTIN_OBJ        ObjectType = "BUILTIN"
@@ -225,9 +225,10 @@ func IsError(obj Object) bool {
 
 // Model represents a model definition (the type itself).
 type Model struct {
-	Name    string
-	Fields  map[string]*ast.TypeExpression
-	Methods map[string]*Function
+	Name       string
+	FieldNames []string                       // Maintains field order
+	Fields     map[string]*ast.TypeExpression // Quick field lookup
+	Methods    map[string]*Function
 }
 
 func (m *Model) Type() ObjectType { return MODEL_OBJ }
@@ -243,8 +244,11 @@ func (mi *ModelInstance) Type() ObjectType { return MODEL_INSTANCE_OBJ }
 func (mi *ModelInstance) Inspect() string {
 	var out bytes.Buffer
 	pairs := []string{}
-	for k, v := range mi.Fields {
-		pairs = append(pairs, fmt.Sprintf("%s: %s", k, v.Inspect()))
+	// Iterate over fields in order
+	for _, fieldName := range mi.Model.FieldNames {
+		if v, ok := mi.Fields[fieldName]; ok {
+			pairs = append(pairs, fmt.Sprintf("%s: %s", fieldName, v.Inspect()))
+		}
 	}
 	out.WriteString(mi.Model.Name)
 	out.WriteString("(")
@@ -273,4 +277,3 @@ func (ev *EnumValue) Type() ObjectType { return ENUM_VALUE_OBJ }
 func (ev *EnumValue) Inspect() string {
 	return ev.EnumName + "." + ev.Name
 }
-

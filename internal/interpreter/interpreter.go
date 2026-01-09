@@ -668,18 +668,14 @@ func applyFunction(fn Object, args []Object) Object {
 		}
 
 		// Check argument count matches field count
-		if len(args) != len(fn.Fields) {
+		if len(args) != len(fn.FieldNames) {
 			return newError("wrong number of arguments for %s: expected %d, got %d",
-				fn.Name, len(fn.Fields), len(args))
+				fn.Name, len(fn.FieldNames), len(args))
 		}
 
-		// Assign arguments to fields (in order of field definition)
-		// Note: In a complete implementation, we'd maintain field order
-		// For now, we'll assign in the order arguments are provided
-		i := 0
-		for fieldName := range fn.Fields {
+		// Assign arguments to fields in order
+		for i, fieldName := range fn.FieldNames {
 			instance.Fields[fieldName] = args[i]
-			i++
 		}
 
 		return instance
@@ -941,14 +937,17 @@ func getMethod(objType ObjectType, name string) BuiltinFunction {
 
 func evalModelLiteral(node *ast.ModelLiteral, env *Environment) Object {
 	model := &Model{
-		Name:    "", // Name will be set when assigned to a variable
-		Fields:  make(map[string]*ast.TypeExpression),
-		Methods: make(map[string]*Function),
+		Name:       "", // Name will be set when assigned to a variable
+		FieldNames: make([]string, 0, len(node.Fields)),
+		Fields:     make(map[string]*ast.TypeExpression),
+		Methods:    make(map[string]*Function),
 	}
 
-	// Store field type information
+	// Store field type information in order
 	for _, field := range node.Fields {
-		model.Fields[field.Name.Value] = field.Type
+		fieldName := field.Name.Value
+		model.FieldNames = append(model.FieldNames, fieldName)
+		model.Fields[fieldName] = field.Type
 	}
 
 	// Evaluate and store methods

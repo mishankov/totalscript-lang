@@ -868,8 +868,10 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 
 		name := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
-		// Check if it's a method (name = function)
-		if p.peekTokenIs(token.ASSIGN) {
+		// Check if it's a method or field
+		switch {
+		case p.peekTokenIs(token.ASSIGN):
+			// It's a method (name = function)
 			p.nextToken() // consume '='
 			p.nextToken() // move to 'function'
 
@@ -884,12 +886,20 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 				return nil
 			}
 
+			fnLit, ok := fn.(*ast.FunctionLiteral)
+			if !ok {
+				msg := "expected function literal"
+				p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+				return nil
+			}
+
 			method := &ast.ModelMethod{
 				Name:     name,
-				Function: fn.(*ast.FunctionLiteral),
+				Function: fnLit,
 			}
 			model.Methods = append(model.Methods, method)
-		} else if p.peekTokenIs(token.COLON) {
+
+		case p.peekTokenIs(token.COLON):
 			// It's a field
 			p.nextToken() // consume ':'
 			p.nextToken() // move to type
@@ -904,7 +914,8 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 				Type: typeExpr,
 			}
 			model.Fields = append(model.Fields, field)
-		} else {
+
+		default:
 			msg := "expected ':' or '=' after field/method name in model"
 			p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
 			return nil
