@@ -1,54 +1,79 @@
-version: 2
-
-run:
-  timeout: 5m
-  modules-download-mode: readonly
+version: "2"
 
 linters:
+  default: none
   enable:
-    # Essential linters
-    - errcheck
-    - govet
-    - ineffassign
-    - unused
-
-    # Additional useful linters
     - bodyclose
-    - errorlint
+    - containedctx
+    - dupl
+    - err113
+    - errcheck
+    - exhaustive
+    - fatcontext
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gochecknoglobals
+    - gochecknoinits
     - goconst
     - gocritic
-    - misspell
+    - godoclint
+    - godox
+    - gosec
+    - govet
+    - iface
+    - intrange
+    - makezero
+    - mirror
+    - musttag
+    - nestif
+    - nilerr
+    - nilnesserr
+    - nilnil
+    - noctx
+    - paralleltest
+    - perfsprint
+    - prealloc
+    - revive
+    - staticcheck
+    - tagalign
+    - tagliatelle
+    - testableexamples
+    - testpackage
+    - thelper
+    - tparallel
     - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - usetesting
+    - wastedassign
+    - wrapcheck
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
+  settings:
+    exhaustive:
+      default-signifies-exhaustive: true
 
-  govet:
-    enable-all: true
+    iface:
+      enable:
+        - identical # Identifies interfaces in the same package that have identical method sets.
+        - unused # Identifies interfaces that are not used anywhere in the same package where the interface is defined.
+        - opaque # Identifies functions that return interfaces, but the actual returned value is always a single concrete implementation.
 
-  goconst:
-    min-len: 3
-    min-occurrences: 3
+    tagliatelle:
+      case:
+        rules:
+          json: camel
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - dupl
+          - err113
+          - errcheck
+          - goconst
+          - gosec
+          - nilnil
 
-  misspell:
-    locale: US
-
-issues:
-  exclude-rules:
-    # Exclude some linters from running on tests files
-    - path: _test\.go
-      linters:
-        - dupl
-        - gocyclo
-        - gocognit
-        - gosec
-
-    # Exclude lll issues for long lines with go:generate
-    - linters:
-        - lll
-      source: "^//go:generate "
-
-  max-issues-per-linter: 0
-  max-same-issues: 0
+formatters:
+  enable:
+    - gofmt
