@@ -6,16 +6,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TotalScript is a scripting language implementation in Go with batteries included (built-in database and HTTP server). The project implements a complete interpreter following the classic compiler architecture pattern.
 
-**Current Status**: Phases 1-4 complete (Lexer, Parser, Interpreter, CLI). Core language working (~45% of specification implemented).
+**Current Status**: Phases 1-6 complete! Core language with models, enums, and standard library (~70% of specification implemented).
 
 **Implementation Progress**:
 - ✅ **Phase 1**: Lexer - All tokens, comments, string escapes (100%)
-- ✅ **Phase 2**: Parser - AST nodes for core features (95%)
-- ✅ **Phase 3**: Interpreter - Core evaluation, control flow, closures (95%)
+- ✅ **Phase 2**: Parser - AST nodes for core features (100%)
+- ✅ **Phase 3**: Interpreter - Core evaluation, control flow, closures (100%)
 - ✅ **Phase 4**: CLI - File execution with tsl binary (100%)
-- ⚠️ **Phase 5**: Built-ins - stdlib functions and methods (0%)
-- ❌ **Phase 6**: Models - User-defined types (0%)
-- ❌ **Phase 7**: Enums - Enumeration types (0%)
+- ✅ **Phase 5**: Built-ins - stdlib functions and methods (100%)
+- ✅ **Phase 6**: Models & Enums - User-defined types (100% spec compliant)
+- ❌ **Phase 7**: Advanced Types - Union types, optional types (0%)
 - ❌ **Phase 8**: Modules - Import system (0%)
 - ❌ **Phase 9**: Database - SQLite integration (0%)
 - ❌ **Phase 10**: HTTP - Server and client (0%)
@@ -276,55 +276,66 @@ The following features from `specification.md` are fully implemented and tested:
 - **Map indexing**: `map["key"]` returns value or NULL if missing
 - **Heterogeneous collections**: Arrays and maps can hold mixed types
 
-### Type System (Partial)
-- **Type annotations**: Parsed for documentation (not enforced)
-- **Type checking**: `is` operator works for basic type checking
-- **Union types**: Syntax parsed (e.g., `integer | string`)
-- **Optional types**: Syntax parsed (e.g., `string?`)
+### Built-in Functions & Standard Library
+- **Output**: `println()` for console output
+- **Type conversions**: `integer()`, `float()`, `string()`, `boolean()` convert between types
+- **Type inspection**: `typeof()` returns type name as string
+- **String methods**: `.length()`, `.upper()`, `.lower()`, `.split()`, `.trim()`, `.contains()`, `.replace()`, `.substring()`
+- **Array methods**: `.length()`, `.push()`, `.pop()`, `.insert()`, `.remove()`, `.contains()`, `.indexOf()`, `.join()`, `.map()`, `.filter()`, `.reduce()`
+- **Map methods**: `.length()`, `.keys()`, `.values()`, `.contains()`, `.remove()`
+
+### Models (User-Defined Types)
+- **Model definition**: `const Point = model { x: float, y: float }`
+- **Model instantiation**: `var p = Point(3, 4)` using default constructor
+- **Multiple constructors**: Custom constructors with different parameter counts
+- **Model methods**: Functions inside models with `this` keyword support
+- **Nested models**: Models can contain other models as fields
+- **Field access**: `p.x`, `p.y` access model fields
+- **Method calls**: `p.distance()` calls model methods
+- **Built-in Error model**: `Error("message")` for error handling
+
+### Enums (Enumeration Types)
+- **Enum definition**: `const Status = enum { OK = 200, NotFound = 404 }`
+- **Enum values**: Integer, string, and boolean underlying types
+- **Enum member access**: `Status.OK` returns enum value
+- **Enum value property**: `status.value` returns underlying value (200)
+- **Enum methods**: `.values()` returns all values, `.fromValue(n)` finds by value
+- **Enum comparison**: `status == Status.OK` works correctly
+
+### Type System
+- **Type annotations**: Parsed for documentation (not enforced at runtime)
+- **Type checking with `is`**: Works for models, enums, and built-in types
+  - Built-in types: `value is integer`, `value is string`, `value is boolean`, `value is float`, `value is null`, `value is array`, `value is map`
+  - User types: `instance is Point`, `status is HttpStatus`
+- **Union types**: Syntax parsed (e.g., `integer | string`) but not enforced
+- **Optional types**: Syntax parsed (e.g., `string?`) but not enforced
 
 ## What's Partially Working ⚠️
 
 Features that are parsed but not fully functional:
 
-1. **Member expressions** (`.` operator)
-   - Status: Parsed correctly by parser
-   - Issue: `evalMemberExpression()` returns "not yet supported" error
-   - Impact: Cannot access object properties, no method calls possible
-   - Location: `internal/interpreter/interpreter.go:706-708`
-
-2. **Type annotations**
+1. **Type annotations**
    - Status: Fully parsed (simple types, unions, optionals, generics)
    - Issue: Not enforced or validated at runtime
    - Impact: No type safety, documentation only
    - Location: Type information in AST but unused in evaluation
 
-3. **Error handling pattern**
-   - Status: Error objects exist internally
-   - Issue: No `Error()` constructor for user code
-   - Impact: Cannot create `Error("message")` in TotalScript code
-   - Workaround: Errors automatically created for runtime errors
-
 ## What's Missing ❌
 
 Features defined in `specification.md` but not yet implemented:
 
-### Critical for Usability
-- **Built-in functions**: `println()`, `string()`, `integer()`, `float()`, `boolean()`, `typeof()`
-- **String methods**: `.length()`, `.upper()`, `.lower()`, `.split()`, `.trim()`, `.contains()`, `.replace()`, `.substring()`
-- **Array methods**: `.length()`, `.push()`, `.pop()`, `.insert()`, `.remove()`, `.contains()`, `.map()`, `.filter()`, `.reduce()`
-- **Map methods**: `.length()`, `.keys()`, `.values()`, `.contains()`, `.remove()`
-- **Index assignment**: Cannot do `arr[0] = val` or `map["key"] = val` (collections effectively immutable)
+### Collection Limitations
+- **Index assignment**: Cannot do `arr[0] = val` or `map["key"] = val` (collections effectively immutable via index)
 - **Array slicing**: Cannot do `arr[1..3]`, `arr[2..]`, `arr[..3]`
 
 ### Advanced Features
-- **Models**: User-defined types, `this` keyword, methods, constructors, annotations
-- **Enums**: Enumeration types with named values
+- **Union types enforcement**: Syntax parsed but not validated at runtime
+- **Optional types enforcement**: Syntax parsed but not validated at runtime
+- **Function overloading**: Multiple signatures with same name
 - **Modules**: `import` statement, module system, qualified access
-- **Standard library**: No `math`, `json`, `fs`, `time`, `os`, `crypto` modules
+- **Standard library modules**: No `math`, `json`, `fs`, `time`, `os`, `crypto` modules
 - **Database**: No `db` object, no SQLite integration, no persistence
 - **HTTP**: No `server` or `client` objects, no Request/Response types
-- **Function overloading**: Multiple signatures with same name
-- **Error Model**: Cannot instantiate `Error()` in user code
 
 ## Known Limitations
 
@@ -332,26 +343,25 @@ Current implementation limitations to be aware of:
 
 ### Assignment Limitations
 1. **Only simple identifiers**: Can only assign to variables like `x = 5`
-2. **No index assignment**: Cannot do `arr[0] = val` or `map["key"] = val`
-3. **No member assignment**: Cannot do `obj.field = val`
-4. **Workaround**: Reassign entire collection or use future array/map methods
+2. **No index assignment**: Cannot do `arr[0] = val` or `map["key"] = val` (must use `.push()`, `.insert()`, etc.)
+3. **No member assignment**: Cannot do `obj.field = val` (model fields are set at construction)
+4. **Workaround**: Use array/map methods (`.push()`, `.insert()`, `.remove()`) or recreate objects
 
 ### Expression Limitations
-5. **Member access not working**: `.` operator parsed but evaluation returns error
-6. **No array slicing**: Only single index access works (`arr[0]`), not ranges (`arr[1..3]`)
-7. **No method calls**: No `.method()` syntax since member access doesn't work
+5. **No array slicing**: Only single index access works (`arr[0]`), not ranges (`arr[1..3]`)
 
 ### Type System Limitations
-8. **Type annotations ignored**: Parsed for documentation but no runtime validation
-9. **No type narrowing**: `is` operator checks type but doesn't affect subsequent code
-10. **No generics**: Generic syntax `array<integer>` parsed but not enforced
+6. **Type annotations not enforced**: Parsed for documentation but no runtime validation
+7. **No type narrowing**: `is` operator checks type but doesn't affect subsequent code flow
+8. **No generics enforcement**: Generic syntax `array<integer>` parsed but not enforced
+9. **No union type enforcement**: Syntax parsed but not validated
+10. **No optional type enforcement**: Syntax parsed but not validated
 
-### Missing Core Features
-11. **No built-in functions**: Must write all I/O and utilities from scratch
-12. **No standard library**: No math, string manipulation, file I/O, etc.
-13. **Collections are limited**: Can read but not easily modify arrays/maps
-14. **No models or enums**: Only primitive types and collections available
-15. **No modules**: Cannot split code across multiple files
+### Missing Features
+11. **No standard library modules**: No `math`, `json`, `fs`, `time`, `os`, `crypto` modules
+12. **No modules/imports**: Cannot split code across multiple files
+13. **No database integration**: No built-in SQLite support
+14. **No HTTP support**: No built-in HTTP server or client
 
 ## Specification Compliance
 
@@ -359,8 +369,8 @@ Current implementation limitations to be aware of:
 
 All implemented features correctly follow `specification.md`. There are no deviations or specification violations. The implementation uses a phased approach:
 
-- **Phases 1-4** (Lexer, Parser, Interpreter, CLI): ✅ Complete and spec-compliant
-- **Phases 5-11** (Advanced features): ❌ Not yet started
+- **Phases 1-6** (Core Language, Built-ins, Models & Enums): ✅ Complete and spec-compliant
+- **Phases 7-10** (Advanced features): ❌ Not yet started
 
 ### Feature Coverage Matrix
 
@@ -370,15 +380,18 @@ All implemented features correctly follow `specification.md`. There are no devia
 | **Operators** | 100% | ✅ Complete |
 | **Control Flow** | 100% | ✅ Complete |
 | **Functions** | 95% | ✅ Complete (no overloading) |
-| **Collections** | 70% | ⚠️ Partial (no methods, no slicing) |
-| **Type System** | 40% | ⚠️ Parsed only |
-| **Built-in Functions** | 0% | ❌ Not implemented |
-| **Models** | 0% | ❌ Not implemented |
-| **Enums** | 0% | ❌ Not implemented |
+| **Collections** | 90% | ✅ Complete (no slicing, no index assignment) |
+| **Type System** | 70% | ⚠️ `is` works, annotations not enforced |
+| **Built-in Functions** | 100% | ✅ Complete |
+| **String Methods** | 100% | ✅ Complete |
+| **Array Methods** | 100% | ✅ Complete |
+| **Map Methods** | 100% | ✅ Complete |
+| **Models** | 100% | ✅ Complete (spec compliant) |
+| **Enums** | 100% | ✅ Complete (spec compliant) |
 | **Modules** | 0% | ❌ Not implemented |
 | **Database** | 0% | ❌ Not implemented |
 | **HTTP** | 0% | ❌ Not implemented |
-| **Overall** | ~45% | ⚠️ In Progress |
+| **Overall** | ~70% | ✅ Core Complete |
 
 ### Testing Coverage
 
@@ -390,63 +403,30 @@ All implemented features have comprehensive test suites:
 
 Test execution: `go test ./...` - All tests pass ✅
 
-## Next Steps (Phase 5+)
+## Next Steps (Phase 7+)
 
-### Phase 5: Built-in Functions & Standard Library
-**Priority**: HIGH - Critical for usability
+### Phase 7: Advanced Type System
+**Priority**: MEDIUM - Type safety improvements
 
-Files to create:
-- `internal/stdlib/builtins.go` - Core functions: `println()`, `typeof()`, type conversions
-- `internal/stdlib/string.go` - String methods
-- `internal/stdlib/array.go` - Array methods
-- `internal/stdlib/map.go` - Map methods
+Features to implement:
+1. **Union type enforcement**: Runtime validation of `integer | string` types
+2. **Optional type enforcement**: Runtime validation of `string?` types
+3. **Type narrowing**: `is` operator affects subsequent code flow
+4. **Generic type enforcement**: Validate `array<integer>` at runtime
 
-Key features:
-1. **Output**: `println()` for console output
-2. **Type conversions**: `integer()`, `float()`, `string()`, `boolean()`
-3. **Type inspection**: `typeof()` returns type name
-4. **String methods**: `length()`, `upper()`, `lower()`, `split()`, `trim()`, `contains()`, `replace()`, `substring()`
-5. **Array methods**: `length()`, `push()`, `pop()`, `insert()`, `remove()`, `contains()`, `indexOf()`, `map()`, `filter()`, `reduce()`
-6. **Map methods**: `length()`, `keys()`, `values()`, `contains()`, `remove()`
+Implementation notes:
+- Extend `evalVarStatement` and `evalConstStatement` to validate types
+- Add type checking in assignment operations
+- Implement type guards for narrowing
 
-Implementation approach:
-- Register built-in functions in global environment
-- Member expressions need completion: `evalMemberExpression()` must dispatch to object methods
-- Methods return new objects (functional approach) or modify in place (decide per spec)
-
-### Phase 6: Assignment to Collections
-**Priority**: HIGH - Makes collections practical
+### Phase 8: Collection Assignment & Slicing
+**Priority**: HIGH - Makes collections more practical
 
 Features:
 1. **Index assignment**: `arr[0] = newValue`, `map["key"] = newValue`
-2. **Member assignment**: `obj.field = newValue` (needs models first)
-3. Modify `evalAssignmentExpression()` to handle `IndexExpression` and `MemberExpression` as left-hand side
-
-### Phase 7: Models
-**Priority**: MEDIUM - Required for advanced features
-
-Files:
-- Update `internal/ast/ast.go` with `ModelLiteral` node
-- Update `internal/parser/parser.go` with `parseModelLiteral()`
-- Update `internal/interpreter/object.go` with `Model` and `ModelInstance` types
-- Implement `this` keyword binding
-
-Features:
-1. Model definition: `model { fields... }`
-2. Model instantiation: `Point(x, y)`
-3. Model methods with `this` keyword
-4. Multiple constructors with overloading
-5. Field access via member expressions
-6. Annotations: `@id` for primary keys
-
-### Phase 8: Enums
-**Priority**: LOW - Nice to have
-
-Features:
-1. Enum definition with typed values
-2. Enum member access
-3. `Enum.values()`, `Enum.fromValue()` methods
-4. Switch on enum values
+2. **Member assignment**: `obj.field = newValue` for model instances
+3. **Array slicing**: `arr[1..3]`, `arr[2..]`, `arr[..3]`
+4. Modify `evalAssignmentExpression()` to handle `IndexExpression` and `MemberExpression` as left-hand side
 
 ### Phase 9: Modules and Imports
 **Priority**: MEDIUM - Code organization
@@ -483,13 +463,22 @@ Features:
 
 Based on dependencies and impact:
 
-1. ✅ **Phases 1-4**: COMPLETE
-2. 🔄 **Phase 5a**: Built-in functions (`println`, type conversions, `typeof`)
-3. 🔄 **Phase 5b**: Complete member expression evaluation (fix `.` operator)
-4. 🔄 **Phase 5c**: String/Array/Map methods
-5. 🔄 **Phase 6**: Index assignment for collections
-6. **Phase 7**: Models and `this` keyword
-7. **Phase 8**: Enums
-8. **Phase 9**: Modules and standard library
-9. **Phase 10**: Database integration
-10. **Phase 11**: HTTP server and client
+1. ✅ **Phases 1-4**: Core language (Lexer, Parser, Interpreter, CLI) - COMPLETE
+2. ✅ **Phase 5**: Built-in functions and standard library - COMPLETE
+   - Built-in functions: `println()`, `typeof()`, type conversions
+   - String methods: `.length()`, `.upper()`, `.lower()`, `.split()`, etc.
+   - Array methods: `.length()`, `.push()`, `.pop()`, `.map()`, `.filter()`, etc.
+   - Map methods: `.length()`, `.keys()`, `.values()`, `.remove()`, etc.
+3. ✅ **Phase 6**: Models & Enums - COMPLETE (100% spec compliant)
+   - Models with multiple constructors
+   - Model methods with `this` keyword
+   - Enums with `.values()` and `.fromValue()` methods
+   - Extended `is` operator for built-in types
+   - Built-in Error model
+4. **Phase 7**: Advanced type system (union types, optional types, type narrowing)
+5. **Phase 8**: Collection assignment and slicing
+6. **Phase 9**: Modules and imports
+7. **Phase 10**: Database integration
+8. **Phase 11**: HTTP server and client
+
+**Current Status**: Core language complete (Phases 1-6). Ready for advanced features.
