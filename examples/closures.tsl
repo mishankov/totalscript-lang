@@ -1,0 +1,24 @@
+# Closures - functions that capture their environment
+
+# Counter factory
+const makeCounter = function(start) {
+  var count = start
+
+  return function(increment) {
+    count = count + increment
+    return count
+  }
+}
+
+# Create counters with different starting values
+var counter1 = makeCounter(0)
+var counter2 = makeCounter(100)
+
+# Each counter maintains its own state
+var c1a = counter1(1)  # 1
+var c1b = counter1(2)  # 3
+var c2a = counter2(5)  # 105
+var c1c = counter1(3)  # 6
+
+# Result: 6
+c1c

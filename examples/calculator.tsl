@@ -1,0 +1,36 @@
+# Simple calculator with functions
+
+const add = function(a, b) {
+  return a + b
+}
+
+const subtract = function(a, b) {
+  return a - b
+}
+
+const multiply = function(a, b) {
+  return a * b
+}
+
+const divide = function(a, b) {
+  if b == 0 {
+    return null
+  }
+  return a / b
+}
+
+const power = function(base, exp) {
+  return base ** exp
+}
+
+# Perform calculations
+var sum = add(10, 5)           # 15
+var difference = subtract(10, 5) # 5
+var product = multiply(10, 5)   # 50
+var quotient = divide(10, 5)    # 2.0
+var squared = power(5, 2)       # 25
+
+# Compose operations
+var result = add(multiply(3, 4), divide(20, 4))  # 12 + 5 = 17
+
+result

@@ -1,0 +1,15 @@
+# Fibonacci sequence using recursion
+
+const fib = function(n) {
+  if n <= 1 {
+    return n
+  }
+  return fib(n - 1) + fib(n - 2)
+}
+
+# Calculate fibonacci numbers
+var f5 = fib(5)   # 5
+var f10 = fib(10) # 55
+
+# Returns the 10th fibonacci number
+f10

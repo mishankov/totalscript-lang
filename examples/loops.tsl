@@ -1,0 +1,31 @@
+# Different loop types in TotalScript
+
+# While loop
+var i = 0
+var whileSum = 0
+while i < 5 {
+  whileSum = whileSum + i
+  i = i + 1
+}
+
+# For-in loop with range
+var rangeSum = 0
+for n in 0..5 {
+  rangeSum = rangeSum + n
+}
+
+# For-in loop with array
+var arr = [10, 20, 30, 40]
+var arraySum = 0
+for value in arr {
+  arraySum = arraySum + value
+}
+
+# C-style for loop
+var cSum = 0
+for var j = 0; j < 10; j = j + 1 {
+  cSum = cSum + j
+}
+
+# Result: 45 (sum of 0..9)
+cSum

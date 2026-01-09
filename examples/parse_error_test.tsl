@@ -1,0 +1,2 @@
+# Test parser error
+var x = 10 +  # Incomplete expression
