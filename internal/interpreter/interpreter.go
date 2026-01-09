@@ -27,6 +27,12 @@ func Eval(node ast.Node, env *Environment) Object {
 				return val
 			}
 		}
+		// If assigning a model or enum, set its name
+		if model, ok := val.(*Model); ok {
+			model.Name = node.Name.Value
+		} else if enum, ok := val.(*Enum); ok {
+			enum.Name = node.Name.Value
+		}
 		env.Set(node.Name.Value, val)
 		return val
 
@@ -34,6 +40,12 @@ func Eval(node ast.Node, env *Environment) Object {
 		val := Eval(node.Value, env)
 		if IsError(val) {
 			return val
+		}
+		// If assigning a model or enum, set its name
+		if model, ok := val.(*Model); ok {
+			model.Name = node.Name.Value
+		} else if enum, ok := val.(*Enum); ok {
+			enum.Name = node.Name.Value
 		}
 		env.Set(node.Name.Value, val)
 		return val
@@ -405,6 +417,8 @@ func evalInfixExpression(operator string, left, right Object) Object {
 		return nativeBoolToBooleanObject(IsTruthy(left) && IsTruthy(right))
 	case operator == "||":
 		return nativeBoolToBooleanObject(IsTruthy(left) || IsTruthy(right))
+	case operator == "is":
+		return evalIsOperator(left, right)
 	case left.Type() != right.Type():
 		return newError("type mismatch: %s %s %s", left.Type(), operator, right.Type())
 	default:
@@ -975,4 +989,28 @@ func evalThisExpression(env *Environment) Object {
 		return newError("'this' can only be used inside a model method")
 	}
 	return val
+}
+
+func evalIsOperator(left, right Object) Object {
+	// The `is` operator checks if left is an instance of the type on the right
+	// right should be a Model or Enum type
+
+	switch rightType := right.(type) {
+	case *Model:
+		// Check if left is an instance of this model
+		if instance, ok := left.(*ModelInstance); ok {
+			return nativeBoolToBooleanObject(instance.Model == rightType)
+		}
+		return FALSE
+
+	case *Enum:
+		// Check if left is a value of this enum
+		if enumValue, ok := left.(*EnumValue); ok {
+			return nativeBoolToBooleanObject(enumValue.EnumName == rightType.Name)
+		}
+		return FALSE
+
+	default:
+		return newError("'is' operator requires a model or enum type on the right side")
+	}
 }

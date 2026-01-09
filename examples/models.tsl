@@ -1,0 +1,57 @@
+# Model demonstrations
+
+# Simple model with fields
+const Point = model {
+  x: float
+  y: float
+}
+
+var p1 = Point(3, 4)
+println("Point:", p1)
+println("x:", p1.x)
+println("y:", p1.y)
+
+# Model with methods
+const Rectangle = model {
+  width: float
+  height: float
+
+  area = function() {
+    return this.width * this.height
+  }
+
+  perimeter = function() {
+    return 2 * (this.width + this.height)
+  }
+}
+
+var rect = Rectangle(5, 3)
+println("\nRectangle:", rect)
+println("Width:", rect.width)
+println("Height:", rect.height)
+println("Area:", rect.area())
+println("Perimeter:", rect.perimeter())
+
+# Nested models
+const Circle = model {
+  center: Point
+  radius: float
+
+  area = function() {
+    return 3.14159 * this.radius * this.radius
+  }
+}
+
+var center = Point(0, 0)
+var circle = Circle(center, 5)
+println("\nCircle:", circle)
+println("Center x:", circle.center.x)
+println("Center y:", circle.center.y)
+println("Radius:", circle.radius)
+println("Area:", circle.area())
+
+# Type checking with 'is' operator
+println("\nType checking:")
+println("p1 is Point:", p1 is Point)
+println("rect is Point:", rect is Point)
+println("rect is Rectangle:", rect is Rectangle)

@@ -1,0 +1,51 @@
+# Enum demonstrations
+
+# Integer enum
+const HttpStatus = enum {
+  OK = 200
+  Created = 201
+  BadRequest = 400
+  NotFound = 404
+  ServerError = 500
+}
+
+var status = HttpStatus.OK
+println("Status:", status)
+println("Status value:", status.value)
+
+# String enum
+const Direction = enum {
+  North = "N"
+  South = "S"
+  East = "E"
+  West = "W"
+}
+
+var dir = Direction.North
+println("\nDirection:", dir)
+println("Direction value:", dir.value)
+
+# Boolean enum
+const Feature = enum {
+  Enabled = true
+  Disabled = false
+}
+
+var feature = Feature.Enabled
+println("\nFeature:", feature)
+println("Feature value:", feature.value)
+
+# Using enums in conditionals
+if status == HttpStatus.OK {
+  println("\nRequest was successful!")
+}
+
+if dir == Direction.North {
+  println("Heading north!")
+}
+
+# Type checking with enums
+println("\nType checking:")
+println("status is HttpStatus:", status is HttpStatus)
+println("dir is HttpStatus:", dir is HttpStatus)
+println("dir is Direction:", dir is Direction)
