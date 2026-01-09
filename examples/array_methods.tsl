@@ -1,0 +1,47 @@
+# Array method demonstrations
+
+var arr = [1, 2, 3, 4, 5]
+
+# Basic methods
+println("Original array:", arr)
+println("Length:", arr.length())
+println("Contains 3:", arr.contains(3))
+println("Contains 10:", arr.contains(10))
+println("Index of 3:", arr.indexOf(3))
+
+# Mutating methods
+arr.push(6)
+println("After push(6):", arr)
+
+var popped = arr.pop()
+println("Popped value:", popped)
+println("After pop():", arr)
+
+arr.insert(2, 10)
+println("After insert(2, 10):", arr)
+
+arr.remove(2)
+println("After remove(2):", arr)
+
+# Functional methods
+var numbers = [1, 2, 3, 4, 5]
+
+var doubled = numbers.map(function(x) {
+  return x * 2
+})
+println("Doubled:", doubled)
+
+var evens = numbers.filter(function(x) {
+  return x % 2 == 0
+})
+println("Evens:", evens)
+
+var sum = numbers.reduce(0, function(acc, x) {
+  return acc + x
+})
+println("Sum:", sum)
+
+println("Each element:")
+numbers.each(function(x) {
+  println("  -", x)
+})

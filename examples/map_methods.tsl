@@ -1,0 +1,22 @@
+# Map method demonstrations
+
+var user = {"name": "Alice", "age": "30", "city": "NYC"}
+
+# Basic methods
+println("Original map:", user)
+println("Length:", user.length())
+println("Keys:", user.keys())
+println("Values:", user.values())
+println("Contains 'name':", user.contains("name"))
+println("Contains 'email':", user.contains("email"))
+
+# Mutating method
+user.remove("city")
+println("After remove('city'):", user)
+println("New length:", user.length())
+
+# Working with numeric values
+var scores = {"math": "95", "english": "87", "science": "92"}
+println("\nScores:", scores)
+println("All keys:", scores.keys())
+println("All values:", scores.values())

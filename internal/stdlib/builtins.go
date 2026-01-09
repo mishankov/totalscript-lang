@@ -144,4 +144,14 @@ func RegisterMethods() {
 	for name, method := range StringMethods() {
 		interpreter.RegisterMethod(interpreter.STRING_OBJ, name, method)
 	}
+
+	// Register array methods
+	for name, method := range ArrayMethods() {
+		interpreter.RegisterMethod(interpreter.ARRAY_OBJ, name, method)
+	}
+
+	// Register map methods
+	for name, method := range MapMethods() {
+		interpreter.RegisterMethod(interpreter.MAP_OBJ, name, method)
+	}
 }
