@@ -25,10 +25,14 @@ const (
 	FUNCTION_OBJ     ObjectType = "FUNCTION"
 	ARRAY_OBJ        ObjectType = "ARRAY"
 	MAP_OBJ          ObjectType = "MAP"
-	BREAK_OBJ        ObjectType = "BREAK"
-	CONTINUE_OBJ     ObjectType = "CONTINUE"
-	BUILTIN_OBJ      ObjectType = "BUILTIN"
-	BOUND_METHOD_OBJ ObjectType = "BOUND_METHOD"
+	BREAK_OBJ          ObjectType = "BREAK"
+	CONTINUE_OBJ       ObjectType = "CONTINUE"
+	BUILTIN_OBJ        ObjectType = "BUILTIN"
+	BOUND_METHOD_OBJ   ObjectType = "BOUND_METHOD"
+	MODEL_OBJ          ObjectType = "MODEL"
+	MODEL_INSTANCE_OBJ ObjectType = "MODEL_INSTANCE"
+	ENUM_OBJ           ObjectType = "ENUM"
+	ENUM_VALUE_OBJ     ObjectType = "ENUM_VALUE"
 )
 
 // Object is the interface for all runtime values.
@@ -218,3 +222,55 @@ func IsError(obj Object) bool {
 	}
 	return false
 }
+
+// Model represents a model definition (the type itself).
+type Model struct {
+	Name    string
+	Fields  map[string]*ast.TypeExpression
+	Methods map[string]*Function
+}
+
+func (m *Model) Type() ObjectType { return MODEL_OBJ }
+func (m *Model) Inspect() string  { return "model " + m.Name }
+
+// ModelInstance represents an instance of a model.
+type ModelInstance struct {
+	Model  *Model
+	Fields map[string]Object
+}
+
+func (mi *ModelInstance) Type() ObjectType { return MODEL_INSTANCE_OBJ }
+func (mi *ModelInstance) Inspect() string {
+	var out bytes.Buffer
+	pairs := []string{}
+	for k, v := range mi.Fields {
+		pairs = append(pairs, fmt.Sprintf("%s: %s", k, v.Inspect()))
+	}
+	out.WriteString(mi.Model.Name)
+	out.WriteString("(")
+	out.WriteString(strings.Join(pairs, ", "))
+	out.WriteString(")")
+	return out.String()
+}
+
+// Enum represents an enum definition (the type itself).
+type Enum struct {
+	Name   string
+	Values map[string]Object // name -> underlying value
+}
+
+func (e *Enum) Type() ObjectType { return ENUM_OBJ }
+func (e *Enum) Inspect() string  { return "enum " + e.Name }
+
+// EnumValue represents a specific enum value.
+type EnumValue struct {
+	EnumName string
+	Name     string
+	Value    Object // underlying value (integer, string, boolean)
+}
+
+func (ev *EnumValue) Type() ObjectType { return ENUM_VALUE_OBJ }
+func (ev *EnumValue) Inspect() string {
+	return ev.EnumName + "." + ev.Name
+}
+

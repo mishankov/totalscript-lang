@@ -99,6 +99,9 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.FUNCTION, p.parseFunctionLiteral)
 	p.registerPrefix(token.LBRACKET, p.parseArrayLiteral)
 	p.registerPrefix(token.LBRACE, p.parseMapLiteral)
+	p.registerPrefix(token.MODEL, p.parseModelLiteral)
+	p.registerPrefix(token.ENUM, p.parseEnumLiteral)
+	p.registerPrefix(token.THIS, p.parseThisExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -843,4 +846,118 @@ func (p *Parser) parseTypeExpression() *ast.TypeExpression {
 	}
 
 	return typeExpr
+}
+
+func (p *Parser) parseModelLiteral() ast.Expression {
+	model := &ast.ModelLiteral{Token: p.curToken}
+	model.Fields = []*ast.ModelField{}
+	model.Methods = []*ast.ModelMethod{}
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	p.nextToken()
+
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		// Parse field or method
+		if !p.curTokenIs(token.IDENT) {
+			p.peekError(token.IDENT)
+			return nil
+		}
+
+		name := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+		// Check if it's a method (name = function)
+		if p.peekTokenIs(token.ASSIGN) {
+			p.nextToken() // consume '='
+			p.nextToken() // move to 'function'
+
+			if !p.curTokenIs(token.FUNCTION) {
+				msg := "expected function after '=' in model method"
+				p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+				return nil
+			}
+
+			fn := p.parseFunctionLiteral()
+			if fn == nil {
+				return nil
+			}
+
+			method := &ast.ModelMethod{
+				Name:     name,
+				Function: fn.(*ast.FunctionLiteral),
+			}
+			model.Methods = append(model.Methods, method)
+		} else if p.peekTokenIs(token.COLON) {
+			// It's a field
+			p.nextToken() // consume ':'
+			p.nextToken() // move to type
+
+			typeExpr := p.parseTypeExpression()
+			if typeExpr == nil {
+				return nil
+			}
+
+			field := &ast.ModelField{
+				Name: name,
+				Type: typeExpr,
+			}
+			model.Fields = append(model.Fields, field)
+		} else {
+			msg := "expected ':' or '=' after field/method name in model"
+			p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+			return nil
+		}
+
+		p.nextToken()
+	}
+
+	return model
+}
+
+func (p *Parser) parseEnumLiteral() ast.Expression {
+	enum := &ast.EnumLiteral{Token: p.curToken}
+	enum.Values = []*ast.EnumValue{}
+
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+
+	p.nextToken()
+
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		// Parse enum value
+		if !p.curTokenIs(token.IDENT) {
+			p.peekError(token.IDENT)
+			return nil
+		}
+
+		name := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
+
+		if !p.expectPeek(token.ASSIGN) {
+			return nil
+		}
+
+		p.nextToken() // move to value expression
+
+		value := p.parseExpression(LOWEST)
+		if value == nil {
+			return nil
+		}
+
+		enumValue := &ast.EnumValue{
+			Name:  name,
+			Value: value,
+		}
+		enum.Values = append(enum.Values, enumValue)
+
+		p.nextToken()
+	}
+
+	return enum
+}
+
+func (p *Parser) parseThisExpression() ast.Expression {
+	return &ast.ThisExpression{Token: p.curToken}
 }

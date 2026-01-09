@@ -151,6 +151,15 @@ func Eval(node ast.Node, env *Environment) Object {
 
 	case *ast.RangeExpression:
 		return evalRangeExpression(node, env)
+
+	case *ast.ModelLiteral:
+		return evalModelLiteral(node, env)
+
+	case *ast.EnumLiteral:
+		return evalEnumLiteral(node, env)
+
+	case *ast.ThisExpression:
+		return evalThisExpression(env)
 	}
 
 	return nil
@@ -637,6 +646,30 @@ func applyFunction(fn Object, args []Object) Object {
 		methodArgs = append(methodArgs, args...)
 		return fn.Method(methodArgs...)
 
+	case *Model:
+		// Instantiate the model
+		instance := &ModelInstance{
+			Model:  fn,
+			Fields: make(map[string]Object),
+		}
+
+		// Check argument count matches field count
+		if len(args) != len(fn.Fields) {
+			return newError("wrong number of arguments for %s: expected %d, got %d",
+				fn.Name, len(fn.Fields), len(args))
+		}
+
+		// Assign arguments to fields (in order of field definition)
+		// Note: In a complete implementation, we'd maintain field order
+		// For now, we'll assign in the order arguments are provided
+		i := 0
+		for fieldName := range fn.Fields {
+			instance.Fields[fieldName] = args[i]
+			i++
+		}
+
+		return instance
+
 	default:
 		return newError("not a function: %s", fn.Type())
 	}
@@ -746,7 +779,51 @@ func evalMemberExpression(node *ast.MemberExpression, env *Environment) Object {
 
 	memberName := node.Member.Value
 
-	// Look up method for this object type
+	// Handle Enum member access (Enum.Value)
+	if enum, ok := object.(*Enum); ok {
+		if value, exists := enum.Values[memberName]; exists {
+			return &EnumValue{
+				EnumName: enum.Name,
+				Name:     memberName,
+				Value:    value,
+			}
+		}
+		return newError("enum %s has no member '%s'", enum.Name, memberName)
+	}
+
+	// Handle ModelInstance member access
+	if instance, ok := object.(*ModelInstance); ok {
+		// Check if it's a field
+		if value, exists := instance.Fields[memberName]; exists {
+			return value
+		}
+
+		// Check if it's a method
+		if method, exists := instance.Model.Methods[memberName]; exists {
+			// Create a new environment with 'this' bound to the instance
+			methodEnv := NewEnclosedEnvironment(method.Env)
+			methodEnv.Set("this", instance)
+
+			// Return a function that will use this environment
+			return &Function{
+				Parameters: method.Parameters,
+				Body:       method.Body,
+				Env:        methodEnv,
+			}
+		}
+
+		return newError("model %s has no field or method '%s'", instance.Model.Name, memberName)
+	}
+
+	// Handle EnumValue.value access
+	if enumValue, ok := object.(*EnumValue); ok {
+		if memberName == "value" {
+			return enumValue.Value
+		}
+		return newError("enum value only has 'value' member")
+	}
+
+	// Look up method for this object type (for built-in types)
 	method := getMethod(object.Type(), memberName)
 	if method == nil {
 		return newError("undefined method '%s' for type %s", memberName, object.Type())
@@ -846,4 +923,56 @@ func getMethod(objType ObjectType, name string) BuiltinFunction {
 		return methods[name]
 	}
 	return nil
+}
+
+func evalModelLiteral(node *ast.ModelLiteral, env *Environment) Object {
+	model := &Model{
+		Name:    "", // Name will be set when assigned to a variable
+		Fields:  make(map[string]*ast.TypeExpression),
+		Methods: make(map[string]*Function),
+	}
+
+	// Store field type information
+	for _, field := range node.Fields {
+		model.Fields[field.Name.Value] = field.Type
+	}
+
+	// Evaluate and store methods
+	for _, method := range node.Methods {
+		fn := &Function{
+			Parameters: method.Function.Parameters,
+			Body:       method.Function.Body,
+			Env:        env,
+		}
+		model.Methods[method.Name.Value] = fn
+	}
+
+	return model
+}
+
+func evalEnumLiteral(node *ast.EnumLiteral, env *Environment) Object {
+	enum := &Enum{
+		Name:   "", // Name will be set when assigned to a variable
+		Values: make(map[string]Object),
+	}
+
+	// Evaluate all enum values
+	for _, enumValue := range node.Values {
+		value := Eval(enumValue.Value, env)
+		if IsError(value) {
+			return value
+		}
+		enum.Values[enumValue.Name.Value] = value
+	}
+
+	return enum
+}
+
+func evalThisExpression(env *Environment) Object {
+	// Look for 'this' in the current environment
+	val, ok := env.Get("this")
+	if !ok {
+		return newError("'this' can only be used inside a model method")
+	}
+	return val
 }
