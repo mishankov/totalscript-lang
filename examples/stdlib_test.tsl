@@ -1,0 +1,87 @@
+# Test all standard library modules
+
+import "json"
+import "fs"
+import "time"
+import "os"
+import "math"
+
+println("=== Testing json module ===")
+
+# Test JSON parsing
+var jsonStr = "{\"name\": \"Alice\", \"age\": 30, \"scores\": [95, 87, 92]}"
+var parsed = json.parse(jsonStr)
+println("Parsed JSON:", parsed)
+
+# Test JSON stringification
+var data = {"language": "TotalScript", "version": 1, "features": ["types", "modules", "models"]}
+var jsonOutput = json.stringify(data)
+println("Stringified:", jsonOutput)
+
+# Round-trip test
+var roundTrip = json.parse(json.stringify(data))
+println("Round-trip test:", roundTrip)
+
+println()
+println("=== Testing fs module ===")
+
+# Write a test file
+var testContent = "Hello from TotalScript!\nThis is a test file."
+fs.writeFile("./test_output.txt", testContent)
+println("File written to ./test_output.txt")
+
+# Check if file exists
+if fs.exists("./test_output.txt") {
+    println("File exists: true")
+
+    # Read it back
+    var content = fs.readFile("./test_output.txt")
+    println("File content:", content)
+}
+
+# List current directory (just first few entries)
+var files = fs.listDir(".")
+println("Current directory has", files.length(), "entries")
+println("First entry:", files[0])
+
+println()
+println("=== Testing time module ===")
+
+var startTime = time.now()
+println("Current timestamp:", startTime)
+
+println("Sleeping for 100ms...")
+time.sleep(100)
+
+var endTime = time.now()
+var elapsed = endTime - startTime
+println("Elapsed time:", elapsed, "ms")
+
+println()
+println("=== Testing os module ===")
+
+# Test environment variable (PATH should exist on most systems)
+var pathVar = os.env("PATH")
+if pathVar is null {
+    println("PATH environment variable not set")
+} else {
+    println("PATH is set (length:", pathVar.length(), "chars)")
+}
+
+# Test setting a custom env var in the test
+var testVar = os.env("TOTALSCRIPT_TEST")
+println("TOTALSCRIPT_TEST:", testVar)
+
+# Show command line args
+var cmdArgs = os.args()
+println("Command line arguments:", cmdArgs)
+println("Number of args:", cmdArgs.length())
+
+println()
+println("=== Testing math module (from previous phase) ===")
+println("math.PI:", math.PI)
+println("math.sqrt(16):", math.sqrt(16))
+println("math.pow(2, 10):", math.pow(2, 10))
+
+println()
+println("=== All stdlib tests complete! ===")

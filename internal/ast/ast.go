@@ -98,6 +98,30 @@ func (cs *ConstStatement) String() string {
 	return out.String()
 }
 
+// ImportStatement represents an import declaration.
+// import "math"
+// import "./utils"
+// import "./geometry" as geo
+type ImportStatement struct {
+	Token      token.Token // the 'import' token
+	Path       string      // Module path: "math", "./utils", "./lib/helpers"
+	Alias      string      // Optional alias from 'as' clause, "" if none
+	ModuleName string      // Computed module name for qualified access
+}
+
+func (is *ImportStatement) statementNode()       {}
+func (is *ImportStatement) TokenLiteral() string { return is.Token.Literal }
+func (is *ImportStatement) String() string {
+	var out bytes.Buffer
+	out.WriteString(is.TokenLiteral() + " ")
+	out.WriteString(`"` + is.Path + `"`)
+	if is.Alias != "" {
+		out.WriteString(" as ")
+		out.WriteString(is.Alias)
+	}
+	return out.String()
+}
+
 // ReturnStatement represents a return statement.
 type ReturnStatement struct {
 	Token       token.Token // the 'return' token

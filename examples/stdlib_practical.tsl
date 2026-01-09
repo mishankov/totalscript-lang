@@ -1,0 +1,92 @@
+# Practical example: Configuration file reader with JSON
+
+import "json"
+import "fs"
+import "time"
+
+println("=== Configuration File Manager ===")
+println()
+
+# Create a sample configuration
+const Config = model {
+    appName: string
+    port: integer
+    debugMode: boolean
+    features: array<string>
+}
+
+# Write configuration to file
+var config = {
+    "appName": "TotalScript Server",
+    "port": 8080,
+    "debugMode": true,
+    "features": ["modules", "types", "models", "json"]
+}
+
+var configJson = json.stringify(config)
+println("Writing config to config.json...")
+fs.writeFile("./config.json", configJson)
+println("Config written!")
+println()
+
+# Read and parse configuration
+println("Reading config.json...")
+if fs.exists("./config.json") {
+    var fileContent = fs.readFile("./config.json")
+    var parsedConfig = json.parse(fileContent)
+
+    println("Application Name:", parsedConfig["appName"])
+    println("Port:", parsedConfig["port"])
+    println("Debug Mode:", parsedConfig["debugMode"])
+    println("Features:", parsedConfig["features"])
+    println()
+
+    # Modify and save back
+    parsedConfig["debugMode"] = false
+    parsedConfig["lastModified"] = time.now()
+
+    var updatedJson = json.stringify(parsedConfig)
+    fs.writeFile("./config.json", updatedJson)
+    println("Config updated with lastModified timestamp")
+
+    # Read again to verify
+    var verifyContent = fs.readFile("./config.json")
+    var verifyConfig = json.parse(verifyContent)
+    println("Last modified:", verifyConfig["lastModified"])
+}
+
+println()
+println("=== File Operations Example ===")
+println()
+
+# Create a data directory (simulate with a file)
+var dataFiles = ["users.json", "products.json", "orders.json"]
+
+for file in dataFiles {
+    var sampleData = {"type": file, "timestamp": time.now()}
+    fs.writeFile("./" + file, json.stringify(sampleData))
+}
+
+println("Created", dataFiles.length(), "data files")
+
+# List all JSON files in current directory
+var allFiles = fs.listDir(".")
+var jsonFiles = []
+
+for file in allFiles {
+    if file.endsWith(".json") {
+        jsonFiles.push(file)
+    }
+}
+
+println("Found", jsonFiles.length(), "JSON files:")
+for file in jsonFiles {
+    if fs.exists("./" + file) {
+        var content = fs.readFile("./" + file)
+        var data = json.parse(content)
+        println("  -", file, "->", data)
+    }
+}
+
+println()
+println("=== Processing Complete ===")

@@ -226,6 +226,8 @@ func (p *Parser) parseStatement() ast.Statement {
 		return p.parseVarStatement()
 	case token.CONST:
 		return p.parseConstStatement()
+	case token.IMPORT:
+		return p.parseImportStatement()
 	case token.RETURN:
 		return p.parseReturnStatement()
 	case token.BREAK:
@@ -294,6 +296,61 @@ func (p *Parser) parseConstStatement() *ast.ConstStatement {
 	stmt.Value = p.parseExpression(LOWEST)
 
 	return stmt
+}
+
+func (p *Parser) parseImportStatement() *ast.ImportStatement {
+	stmt := &ast.ImportStatement{Token: p.curToken}
+
+	// Expect a string literal for the module path
+	if !p.expectPeek(token.STRING) {
+		return nil
+	}
+
+	stmt.Path = p.curToken.Literal
+
+	// Check for optional 'as' clause
+	if p.peekTokenIs(token.AS) {
+		p.nextToken() // consume 'as'
+		if !p.expectPeek(token.IDENT) {
+			return nil
+		}
+		stmt.Alias = p.curToken.Literal
+		stmt.ModuleName = stmt.Alias
+	} else {
+		// Compute module name from path
+		stmt.ModuleName = computeModuleName(stmt.Path)
+	}
+
+	return stmt
+}
+
+// computeModuleName extracts the module name from an import path.
+// Examples:
+//
+//	"math" -> "math"
+//	"./utils" -> "utils"
+//	"./lib/helpers" -> "helpers"
+//	"./lib/geometry.tsl" -> "geometry"
+func computeModuleName(path string) string {
+	// Remove any .tsl extension if present
+	if len(path) > 4 && path[len(path)-4:] == ".tsl" {
+		path = path[:len(path)-4]
+	}
+
+	// Find the last slash (if any)
+	lastSlash := -1
+	for i := len(path) - 1; i >= 0; i-- {
+		if path[i] == '/' || path[i] == '\\' {
+			lastSlash = i
+			break
+		}
+	}
+
+	if lastSlash >= 0 {
+		return path[lastSlash+1:]
+	}
+
+	return path
 }
 
 func (p *Parser) parseReturnStatement() *ast.ReturnStatement {

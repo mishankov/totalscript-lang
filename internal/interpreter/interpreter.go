@@ -71,6 +71,9 @@ func Eval(node ast.Node, env *Environment) Object {
 		env.Set(node.Name.Value, val)
 		return val
 
+	case *ast.ImportStatement:
+		return evalImportStatement(node, env)
+
 	case *ast.ReturnStatement:
 		var val Object = NULL
 		if node.ReturnValue != nil {
@@ -238,6 +241,20 @@ func evalProgram(program *ast.Program, env *Environment) Object {
 	}
 
 	return result
+}
+
+func evalImportStatement(is *ast.ImportStatement, env *Environment) Object {
+	// Resolve and load the module
+	module := resolveModule(is.Path, env.currentFile)
+	if IsError(module) {
+		return module
+	}
+
+	// Store module in environment under ModuleName
+	env.Set(is.ModuleName, module)
+
+	// Import statements don't produce values
+	return NULL
 }
 
 func evalBlockStatement(block *ast.BlockStatement, env *Environment) Object {
@@ -1128,6 +1145,15 @@ func evalMemberExpression(node *ast.MemberExpression, env *Environment) Object {
 		return newError("enum %s has no member '%s'", enum.Name, memberName)
 	}
 
+	// Handle Module member access
+	if module, ok := object.(*Module); ok {
+		value, exists := module.Scope.Get(memberName)
+		if !exists {
+			return newError("module '%s' has no member '%s'", module.Name, memberName)
+		}
+		return value
+	}
+
 	// Handle ModelInstance member access
 	if instance, ok := object.(*ModelInstance); ok {
 		// Check if it's a field
@@ -1320,8 +1346,14 @@ func pow(base, exponent float64) float64 {
 	return math.Pow(base, exponent)
 }
 
+// newError creates a new error object.
 func newError(format string, a ...interface{}) *Error {
 	return &Error{Message: fmt.Sprintf(format, a...)}
+}
+
+// NewError creates a new error object (exported for stdlib modules).
+func NewError(format string, a ...interface{}) *Error {
+	return newError(format, a...)
 }
 
 // methodRegistry stores methods for each object type

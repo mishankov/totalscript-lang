@@ -1,0 +1,175 @@
+# TotalScript Standard Library Showcase
+# Demonstrates all available stdlib modules
+
+import "math"
+import "json"
+import "fs"
+import "time"
+import "os"
+
+println("╔════════════════════════════════════════════╗")
+println("║  TotalScript Standard Library Showcase   ║")
+println("╚════════════════════════════════════════════╝")
+println()
+
+# ============================================================================
+# MATH MODULE - Mathematical functions and constants
+# ============================================================================
+println("📐 MATH MODULE")
+println("─────────────")
+
+println("Constants:")
+println("  π (PI)  =", math.PI)
+println("  e (E)   =", math.E)
+println()
+
+println("Basic operations:")
+println("  |−10|          =", math.abs(-10))
+println("  min(5,2,8)     =", math.min(5, 2, 8))
+println("  max(5,2,8)     =", math.max(5, 2, 8))
+println("  ⌊3.7⌋         =", math.floor(3.7))
+println("  ⌈3.2⌉         =", math.ceil(3.2))
+println("  round(3.5)     =", math.round(3.5))
+println()
+
+println("Advanced math:")
+println("  √16            =", math.sqrt(16))
+println("  2¹⁰            =", math.pow(2, 10))
+println("  sin(π/2)       =", math.sin(math.PI / 2))
+println("  cos(0)         =", math.cos(0))
+println("  log(e)         =", math.log(math.E))
+println("  log₁₀(100)     =", math.log10(100))
+println()
+
+# ============================================================================
+# JSON MODULE - Parse and stringify JSON
+# ============================================================================
+println("📄 JSON MODULE")
+println("──────────────")
+
+var user = {
+    "name": "Alice",
+    "age": 30,
+    "skills": ["Go", "TotalScript", "JSON"],
+    "active": true
+}
+
+var jsonStr = json.stringify(user)
+println("Stringified:", jsonStr)
+
+var parsed = json.parse(jsonStr)
+println("Parsed back:", parsed["name"], "is", parsed["age"], "years old")
+println("Skills:", parsed["skills"])
+println()
+
+# ============================================================================
+# FS MODULE - File system operations
+# ============================================================================
+println("📁 FS MODULE")
+println("────────────")
+
+# Create a sample data file
+var sampleData = {
+    "timestamp": time.now(),
+    "message": "Hello from TotalScript!",
+    "version": "1.0"
+}
+
+fs.writeFile("./sample_data.json", json.stringify(sampleData))
+println("✓ Created sample_data.json")
+
+if fs.exists("./sample_data.json") {
+    println("✓ File exists")
+
+    var content = fs.readFile("./sample_data.json")
+    var data = json.parse(content)
+    println("✓ Read data:", data["message"])
+}
+
+var files = fs.listDir(".")
+println("✓ Current directory has", files.length(), "entries")
+println()
+
+# ============================================================================
+# TIME MODULE - Time operations
+# ============================================================================
+println("⏰ TIME MODULE")
+println("──────────────")
+
+var start = time.now()
+println("Current timestamp:", start, "ms")
+
+println("Sleeping for 50ms...")
+time.sleep(50)
+
+var end = time.now()
+println("After sleep:", end, "ms")
+println("Elapsed:", end - start, "ms")
+println()
+
+# ============================================================================
+# OS MODULE - Operating system utilities
+# ============================================================================
+println("💻 OS MODULE")
+println("────────────")
+
+var homeVar = os.env("HOME")
+if homeVar is null {
+    println("HOME not set")
+} else {
+    println("HOME:", homeVar)
+}
+
+var cmdArgs = os.args()
+println("Script arguments:", cmdArgs)
+println()
+
+# ============================================================================
+# PRACTICAL EXAMPLE - Combining modules
+# ============================================================================
+println("🔧 PRACTICAL EXAMPLE")
+println("────────────────────")
+println("Building a simple analytics logger...")
+println()
+
+const LogEntry = model {
+    timestamp: integer
+    event: string
+    data: map<string, integer | string>
+}
+
+var events = []
+
+# Simulate some events
+for i in 0..3 {
+    var entry = {
+        "timestamp": time.now(),
+        "event": "user_action",
+        "data": {"action": "click", "count": i}
+    }
+    events.push(entry)
+    time.sleep(10)
+}
+
+# Save to file
+var logData = {"events": events, "total": events.length()}
+fs.writeFile("./analytics.json", json.stringify(logData))
+println("✓ Saved", events.length(), "events to analytics.json")
+
+# Read and analyze
+if fs.exists("./analytics.json") {
+    var logContent = fs.readFile("./analytics.json")
+    var analytics = json.parse(logContent)
+    println("✓ Analytics file contains", analytics["total"], "events")
+
+    var firstEvent = analytics["events"][0]
+    var lastEvent = analytics["events"][analytics["events"].length() - 1]
+    var duration = lastEvent["timestamp"] - firstEvent["timestamp"]
+
+    println("✓ Events captured over", duration, "ms")
+}
+
+println()
+println("╔════════════════════════════════════════════╗")
+println("║           Showcase Complete!              ║")
+println("╚════════════════════════════════════════════╝")

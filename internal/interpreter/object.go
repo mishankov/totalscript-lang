@@ -33,6 +33,7 @@ const (
 	MODEL_INSTANCE_OBJ ObjectType = "MODEL_INSTANCE"
 	ENUM_OBJ           ObjectType = "ENUM"
 	ENUM_VALUE_OBJ     ObjectType = "ENUM_VALUE"
+	MODULE_OBJ         ObjectType = "MODULE"
 )
 
 // Object is the interface for all runtime values.
@@ -278,3 +279,12 @@ func (ev *EnumValue) Type() ObjectType { return ENUM_VALUE_OBJ }
 func (ev *EnumValue) Inspect() string {
 	return ev.EnumName + "." + ev.Name
 }
+
+// Module represents a loaded module with its exported scope.
+type Module struct {
+	Name  string       // Module name (e.g., "math", "utils")
+	Scope *Environment // Module's exported scope
+}
+
+func (m *Module) Type() ObjectType { return MODULE_OBJ }
+func (m *Module) Inspect() string  { return "module " + m.Name }

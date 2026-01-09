@@ -61,6 +61,54 @@ func TestConstStatements(t *testing.T) {
 	}
 }
 
+func TestImportStatements(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		expectedPath   string
+		expectedAlias  string
+		expectedModule string
+	}{
+		{"stdlib module", `import "math"`, "math", "", "math"},
+		{"file module", `import "./utils"`, "./utils", "", "utils"},
+		{"nested file module", `import "./lib/helpers"`, "./lib/helpers", "", "helpers"},
+		{"module with alias", `import "math" as m`, "math", "m", "m"},
+		{"file with alias", `import "./geometry" as geo`, "./geometry", "geo", "geo"},
+		{"file with .tsl extension", `import "./utils.tsl"`, "./utils.tsl", "", "utils"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			l := lexer.New(tt.input)
+			p := New(l)
+			program := p.ParseProgram()
+			checkParserErrors(t, p)
+
+			if len(program.Statements) != 1 {
+				t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+					len(program.Statements))
+			}
+
+			stmt, ok := program.Statements[0].(*ast.ImportStatement)
+			if !ok {
+				t.Fatalf("statement is not *ast.ImportStatement. got=%T", program.Statements[0])
+			}
+
+			if stmt.Path != tt.expectedPath {
+				t.Errorf("stmt.Path wrong. expected=%q, got=%q", tt.expectedPath, stmt.Path)
+			}
+
+			if stmt.Alias != tt.expectedAlias {
+				t.Errorf("stmt.Alias wrong. expected=%q, got=%q", tt.expectedAlias, stmt.Alias)
+			}
+
+			if stmt.ModuleName != tt.expectedModule {
+				t.Errorf("stmt.ModuleName wrong. expected=%q, got=%q", tt.expectedModule, stmt.ModuleName)
+			}
+		})
+	}
+}
+
 func TestReturnStatements(t *testing.T) {
 	tests := []struct {
 		name     string

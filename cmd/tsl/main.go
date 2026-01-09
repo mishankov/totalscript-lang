@@ -4,6 +4,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/mishankov/totalscript-lang/internal/interpreter"
 	"github.com/mishankov/totalscript-lang/internal/lexer"
@@ -49,8 +50,15 @@ func printUsage() {
 }
 
 func runFile(filename string) {
+	// Get absolute path for the file
+	absPath, err := filepath.Abs(filename)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error resolving file path: %v\n", err)
+		os.Exit(1)
+	}
+
 	// Read file
-	input, err := os.ReadFile(filename)
+	input, err := os.ReadFile(absPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
 		os.Exit(1)
@@ -70,6 +78,7 @@ func runFile(filename string) {
 
 	// Interpret
 	env := interpreter.NewEnvironment()
+	env.SetCurrentFile(absPath) // Set current file for module resolution
 	stdlib.RegisterBuiltins(env)
 	result := interpreter.Eval(program, env)
 

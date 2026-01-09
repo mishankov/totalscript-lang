@@ -4,9 +4,10 @@ import "github.com/mishankov/totalscript-lang/internal/ast"
 
 // Environment represents a scope for variables.
 type Environment struct {
-	store map[string]Object
-	types map[string]*ast.TypeExpression
-	outer *Environment
+	store       map[string]Object
+	types       map[string]*ast.TypeExpression
+	outer       *Environment
+	currentFile string // Absolute path of the current file (for module imports)
 }
 
 // NewEnvironment creates a new environment.
@@ -66,4 +67,10 @@ func (e *Environment) GetType(name string) (*ast.TypeExpression, bool) {
 // SetType sets the type annotation for a variable in the current scope.
 func (e *Environment) SetType(name string, typeExpr *ast.TypeExpression) {
 	e.types[name] = typeExpr
+}
+
+// SetCurrentFile sets the absolute path of the current file being executed.
+// This is used for resolving relative module imports.
+func (e *Environment) SetCurrentFile(path string) {
+	e.currentFile = path
 }

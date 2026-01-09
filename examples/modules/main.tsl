@@ -1,0 +1,28 @@
+# Test module system with both stdlib and file modules
+
+import "math"
+import "./geometry" as geo
+
+println("=== Testing math stdlib module ===")
+println("math.PI:", math.PI)
+println("math.E:", math.E)
+println("math.sqrt(16):", math.sqrt(16))
+println("math.abs(-5):", math.abs(-5))
+println("math.min(3, 1, 4):", math.min(3, 1, 4))
+println("math.max(3, 1, 4):", math.max(3, 1, 4))
+println("math.floor(3.7):", math.floor(3.7))
+println("math.ceil(3.2):", math.ceil(3.2))
+println("math.round(3.5):", math.round(3.5))
+println("math.pow(2, 3):", math.pow(2, 3))
+println("math.sin(math.PI / 2):", math.sin(math.PI / 2))
+println("math.cos(0):", math.cos(0))
+
+println()
+println("=== Testing geometry file module ===")
+println("geo.PI:", geo.PI)
+println("geo.circleArea(5):", geo.circleArea(5.0))
+println("geo.circleCircumference(5):", geo.circleCircumference(5.0))
+
+var rect = geo.Rectangle(10.0, 5.0)
+println("Rectangle(10, 5).area():", rect.area())
+println("Rectangle(10, 5).perimeter():", rect.perimeter())
