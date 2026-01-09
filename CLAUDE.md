@@ -347,7 +347,7 @@ Features defined in `specification.md` but not yet implemented:
 - **Type narrowing**: `is` operator checks type but doesn't affect subsequent code flow
 - **Crypto module**: Hash functions and encryption utilities not yet implemented
 - **Database module**: No `db` module implementation, no SQLite integration, no persistence
-- **HTTP module**: No `http` module implementation (http.server and http.client), no Request/Response types
+- **HTTP module**: No `http` module implementation (http.Server model and http.client), no Request/Response types
 
 ## Known Limitations
 
@@ -356,7 +356,7 @@ Current implementation limitations to be aware of:
 ### Missing Features
 1. **Crypto module**: Hash functions and encryption not yet implemented
 2. **Database module**: No `db` module implementation, no SQLite support
-3. **HTTP module**: No `http` module implementation with server and client functionality
+3. **HTTP module**: No `http` module implementation with Server model and client functionality
 
 ## Specification Compliance
 
@@ -460,13 +460,22 @@ The `http` module provides HTTP server and client through `import "http"`.
 Features:
 1. HTTP server and client in `internal/interpreter/module.go` (createHTTPModule)
 2. Module exports:
-   - `http.server` - Server object with `.get()`, `.post()`, `.put()`, `.delete()`, `.start()`, `.static()`, `.use()`
-   - `http.client` - Client object with `.get()`, `.post()`, `.put()`, `.patch()`, `.delete()`
+   - `http.Server()` - Server model constructor (instantiable, allows multiple server instances)
+   - `http.client` - Client object with `.get()`, `.post()`, `.put()`, `.patch()`, `.delete()` (module-level functions)
    - `http.Request` - Request model type
-   - `http.Response` - Response constructor function
-3. Route handlers with path parameters (`:id`)
-4. Middleware support
-5. Static file serving
+   - `http.Response()` - Response constructor function
+3. Server instance methods: `.get()`, `.post()`, `.put()`, `.delete()`, `.start()`, `.static()`, `.use()`
+4. Route handlers with path parameters (`:id`)
+5. Middleware support
+6. Static file serving
+
+Usage example:
+```tsl
+import "http"
+var server = http.Server()
+server.get("/", handler)
+server.start(8080)
+```
 
 ### Recommended Implementation Order
 

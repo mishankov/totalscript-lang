@@ -669,12 +669,20 @@ import "http"
 ```
 
 The module exports:
-- `http.server` - HTTP server object for defining routes and starting the server
-- `http.client` - HTTP client object for making requests
+- `http.Server()` - Server model constructor for creating HTTP server instances
+- `http.client` - HTTP client object for making requests (module-level functions)
 - `http.Request` - Request model type
-- `http.Response` - Response constructor function
+- `http.Response()` - Response constructor function
 
 ### HTTP Server
+
+The HTTP server is a model that you instantiate and configure:
+
+```tsl
+import "http"
+
+var server = http.Server()
+```
 
 #### Defining Routes
 
@@ -682,16 +690,18 @@ The module exports:
 import "http"
 import "db"
 
-http.server.get("/", function(req: http.Request): http.Response {
+var server = http.Server()
+
+server.get("/", function(req: http.Request): http.Response {
   return http.Response(200, "Hello, World!")
 })
 
-http.server.get("/users", function(req: http.Request): http.Response {
+server.get("/users", function(req: http.Request): http.Response {
   var users = db.find(User) {}
   return http.Response(200, users)    # Auto-converts to JSON
 })
 
-http.server.post("/users", function(req: http.Request): http.Response {
+server.post("/users", function(req: http.Request): http.Response {
   var data = req.json()
   if data is Error {
     return http.Response(400, {"error": data.message})
@@ -701,13 +711,13 @@ http.server.post("/users", function(req: http.Request): http.Response {
   return http.Response(201, user)
 })
 
-http.server.put("/users/:id", function(req: http.Request): http.Response {
+server.put("/users/:id", function(req: http.Request): http.Response {
   var id = req.params["id"]
   # ...
   return http.Response(200, user)
 })
 
-http.server.delete("/users/:id", function(req: http.Request): http.Response {
+server.delete("/users/:id", function(req: http.Request): http.Response {
   var id = req.params["id"]
   db.find(User) { this.email == id } delete
   return http.Response(204)
@@ -717,7 +727,7 @@ http.server.delete("/users/:id", function(req: http.Request): http.Response {
 #### Starting the Server
 
 ```tsl
-http.server.start(8080)              # Blocks and listens on port 8080
+server.start(8080)              # Blocks and listens on port 8080
 ```
 
 #### Request Object
@@ -808,8 +818,9 @@ res.ok                          # true if status is 2xx
 ```tsl
 import "http"
 
-http.server.static("/assets", "./public")    # Serve ./public at /assets
-http.server.static("/", "./dist")            # Serve ./dist at root
+var server = http.Server()
+server.static("/assets", "./public")    # Serve ./public at /assets
+server.static("/", "./dist")            # Serve ./dist at root
 ```
 
 ### Middleware
@@ -817,7 +828,8 @@ http.server.static("/", "./dist")            # Serve ./dist at root
 ```tsl
 import "http"
 
-http.server.use(function(req: http.Request, next: function): http.Response {
+var server = http.Server()
+server.use(function(req: http.Request, next: function): http.Response {
   println("Request:", req.method, req.path)
   var res = next(req)
   println("Response:", res.status)
