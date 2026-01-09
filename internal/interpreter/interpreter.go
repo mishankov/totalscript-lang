@@ -109,6 +109,25 @@ func Eval(node ast.Node, env *Environment) Object {
 		if IsError(left) {
 			return left
 		}
+
+		// Special handling for 'is' operator with type names
+		if node.Operator == "is" {
+			// Check if right side is an identifier (potential type name)
+			if ident, ok := node.Right.(*ast.Identifier); ok {
+				return evalIsOperatorWithTypeName(left, ident.Value, env)
+			}
+			// Check if right side is a literal that represents a type
+			if _, ok := node.Right.(*ast.NullLiteral); ok {
+				return evalIsOperatorWithTypeName(left, "null", env)
+			}
+			if boolLit, ok := node.Right.(*ast.BooleanLiteral); ok {
+				if boolLit.Value {
+					return evalIsOperatorWithTypeName(left, "boolean", env)
+				}
+				return evalIsOperatorWithTypeName(left, "boolean", env)
+			}
+		}
+
 		right := Eval(node.Right, env)
 		if IsError(right) {
 			return right
@@ -661,7 +680,20 @@ func applyFunction(fn Object, args []Object) Object {
 		return fn.Method(methodArgs...)
 
 	case *Model:
-		// Instantiate the model
+		// Try custom constructors first
+		for _, constructor := range fn.Constructors {
+			if len(constructor.Parameters) == len(args) {
+				// Found a matching constructor, call it
+				extendedEnv := extendFunctionEnv(constructor, args)
+				evaluated := Eval(constructor.Body, extendedEnv)
+				if returnValue, ok := evaluated.(*ReturnValue); ok {
+					return returnValue.Value
+				}
+				return evaluated
+			}
+		}
+
+		// No matching custom constructor, use default constructor
 		instance := &ModelInstance{
 			Model:  fn,
 			Fields: make(map[string]Object),
@@ -789,8 +821,55 @@ func evalMemberExpression(node *ast.MemberExpression, env *Environment) Object {
 
 	memberName := node.Member.Value
 
-	// Handle Enum member access (Enum.Value)
+	// Handle Enum member access (Enum.Value) and methods
 	if enum, ok := object.(*Enum); ok {
+		// Check for special methods
+		if memberName == "values" {
+			// Return a builtin function that returns all enum values
+			return &Builtin{
+				Name: "values",
+				Fn: func(args ...Object) Object {
+					if len(args) != 0 {
+						return newError("values() takes no arguments")
+					}
+					elements := make([]Object, 0, len(enum.Values))
+					for name, value := range enum.Values {
+						elements = append(elements, &EnumValue{
+							EnumName: enum.Name,
+							Name:     name,
+							Value:    value,
+						})
+					}
+					return &Array{Elements: elements}
+				},
+			}
+		}
+
+		if memberName == "fromValue" {
+			// Return a builtin function that finds enum by value
+			return &Builtin{
+				Name: "fromValue",
+				Fn: func(args ...Object) Object {
+					if len(args) != 1 {
+						return newError("fromValue() takes exactly 1 argument")
+					}
+					searchValue := args[0]
+					// Search for matching value
+					for name, value := range enum.Values {
+						if objectsEqual(value, searchValue) {
+							return &EnumValue{
+								EnumName: enum.Name,
+								Name:     name,
+								Value:    value,
+							}
+						}
+					}
+					return newError("no enum value found for %s", searchValue.Inspect())
+				},
+			}
+		}
+
+		// Check for regular enum values
 		if value, exists := enum.Values[memberName]; exists {
 			return &EnumValue{
 				EnumName: enum.Name,
@@ -937,10 +1016,11 @@ func getMethod(objType ObjectType, name string) BuiltinFunction {
 
 func evalModelLiteral(node *ast.ModelLiteral, env *Environment) Object {
 	model := &Model{
-		Name:       "", // Name will be set when assigned to a variable
-		FieldNames: make([]string, 0, len(node.Fields)),
-		Fields:     make(map[string]*ast.TypeExpression),
-		Methods:    make(map[string]*Function),
+		Name:         "", // Name will be set when assigned to a variable
+		FieldNames:   make([]string, 0, len(node.Fields)),
+		Fields:       make(map[string]*ast.TypeExpression),
+		Methods:      make(map[string]*Function),
+		Constructors: make([]*Function, 0),
 	}
 
 	// Store field type information in order
@@ -948,6 +1028,16 @@ func evalModelLiteral(node *ast.ModelLiteral, env *Environment) Object {
 		fieldName := field.Name.Value
 		model.FieldNames = append(model.FieldNames, fieldName)
 		model.Fields[fieldName] = field.Type
+	}
+
+	// Store constructors
+	for _, constructor := range node.Constructors {
+		fn := &Function{
+			Parameters: constructor.Parameters,
+			Body:       constructor.Body,
+			Env:        env,
+		}
+		model.Constructors = append(model.Constructors, fn)
 	}
 
 	// Evaluate and store methods
@@ -990,6 +1080,37 @@ func evalThisExpression(env *Environment) Object {
 	return val
 }
 
+func evalIsOperatorWithTypeName(left Object, typeName string, env *Environment) Object {
+	// Check for built-in type names first
+	switch typeName {
+	case "integer":
+		return nativeBoolToBooleanObject(left.Type() == INTEGER_OBJ)
+	case "float":
+		return nativeBoolToBooleanObject(left.Type() == FLOAT_OBJ)
+	case "string":
+		return nativeBoolToBooleanObject(left.Type() == STRING_OBJ)
+	case "boolean":
+		return nativeBoolToBooleanObject(left.Type() == BOOLEAN_OBJ)
+	case "null":
+		return nativeBoolToBooleanObject(left.Type() == NULL_OBJ)
+	case "array":
+		return nativeBoolToBooleanObject(left.Type() == ARRAY_OBJ)
+	case "map":
+		return nativeBoolToBooleanObject(left.Type() == MAP_OBJ)
+	case "function":
+		return nativeBoolToBooleanObject(left.Type() == FUNCTION_OBJ)
+	}
+
+	// Not a built-in type name, try to evaluate as identifier (Model or Enum)
+	right := evalIdentifier(&ast.Identifier{Value: typeName}, env)
+	if IsError(right) {
+		return newError("undefined type: %s", typeName)
+	}
+
+	// Use the regular is operator evaluation
+	return evalIsOperator(left, right)
+}
+
 func evalIsOperator(left, right Object) Object {
 	// The `is` operator checks if left is an instance of the type on the right
 	// right should be a Model or Enum type
@@ -1010,6 +1131,6 @@ func evalIsOperator(left, right Object) Object {
 		return FALSE
 
 	default:
-		return newError("'is' operator requires a model or enum type on the right side")
+		return newError("'is' operator requires a type name or type value on the right side")
 	}
 }

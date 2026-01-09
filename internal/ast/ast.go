@@ -618,9 +618,10 @@ func (mm *ModelMethod) String() string {
 
 // ModelLiteral represents a model definition.
 type ModelLiteral struct {
-	Token   token.Token // the 'model' token
-	Fields  []*ModelField
-	Methods []*ModelMethod
+	Token        token.Token // the 'model' token
+	Fields       []*ModelField
+	Methods      []*ModelMethod
+	Constructors []*FunctionLiteral // Custom constructors
 }
 
 func (ml *ModelLiteral) expressionNode()      {}
@@ -631,6 +632,11 @@ func (ml *ModelLiteral) String() string {
 	for _, field := range ml.Fields {
 		out.WriteString("  ")
 		out.WriteString(field.String())
+		out.WriteString("\n")
+	}
+	for _, constructor := range ml.Constructors {
+		out.WriteString("  constructor = ")
+		out.WriteString(constructor.String())
 		out.WriteString("\n")
 	}
 	for _, method := range ml.Methods {

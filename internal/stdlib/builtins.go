@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/mishankov/totalscript-lang/internal/ast"
 	"github.com/mishankov/totalscript-lang/internal/interpreter"
 )
 
@@ -119,6 +120,17 @@ var Boolean = &interpreter.Builtin{
 	},
 }
 
+// ErrorModel is the built-in Error model for error handling.
+var ErrorModel = &interpreter.Model{
+	Name:       "Error",
+	FieldNames: []string{"message"},
+	Fields: map[string]*ast.TypeExpression{
+		"message": nil, // Type information not strictly needed for built-in
+	},
+	Methods:      make(map[string]*interpreter.Function),
+	Constructors: make([]*interpreter.Function, 0),
+}
+
 // Builtins returns all built-in functions as a map.
 func Builtins() map[string]*interpreter.Builtin {
 	return map[string]*interpreter.Builtin{
@@ -136,6 +148,8 @@ func RegisterBuiltins(env *interpreter.Environment) {
 	for name, builtin := range Builtins() {
 		env.Set(name, builtin)
 	}
+	// Register built-in Error model
+	env.Set("Error", ErrorModel)
 }
 
 // RegisterMethods registers all built-in methods for object types.

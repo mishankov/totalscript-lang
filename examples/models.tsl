@@ -50,8 +50,65 @@ println("Center y:", circle.center.y)
 println("Radius:", circle.radius)
 println("Area:", circle.area())
 
+# Multiple constructors
+const Vector = model {
+  x: float
+  y: float
+
+  # Constructor from single value (creates Vector(v, v))
+  constructor = function(v: float) {
+    return Vector(v, v)
+  }
+
+  # Constructor with no args (creates zero vector)
+  constructor = function() {
+    return Vector(0, 0)
+  }
+
+  dot = function(other: Vector) {
+    return this.x * other.x + this.y * other.y
+  }
+}
+
+var v1 = Vector(3, 4)
+var v2 = Vector(5)
+var v3 = Vector()
+println("\nMultiple constructors:")
+println("Vector(3, 4):", v1)
+println("Vector(5):", v2)
+println("Vector():", v3)
+
 # Type checking with 'is' operator
 println("\nType checking:")
 println("p1 is Point:", p1 is Point)
 println("rect is Point:", rect is Point)
 println("rect is Rectangle:", rect is Rectangle)
+println("v1 is Vector:", v1 is Vector)
+
+# Built-in type checking
+var num = 42
+var text = "hello"
+println("\nBuilt-in type checking:")
+println("num is integer:", num is integer)
+println("num is string:", num is string)
+println("text is string:", text is string)
+println("text is integer:", text is integer)
+
+# Error handling with built-in Error model
+const safeDivide = function(a: float, b: float) {
+  if b == 0 {
+    return Error("division by zero")
+  }
+  return a / b
+}
+
+var result1 = safeDivide(10, 2)
+var result2 = safeDivide(10, 0)
+
+println("\nError handling:")
+println("safeDivide(10, 2):", result1)
+println("safeDivide(10, 0):", result2)
+
+if result2 is Error {
+  println("Caught error:", result2.message)
+}

@@ -49,3 +49,26 @@ println("\nType checking:")
 println("status is HttpStatus:", status is HttpStatus)
 println("dir is HttpStatus:", dir is HttpStatus)
 println("dir is Direction:", dir is Direction)
+
+# Enum methods: values()
+println("\nAll HTTP status values:")
+var allStatuses = HttpStatus.values()
+for s in allStatuses {
+  println("  ", s)
+}
+
+println("\nAll directions:")
+var allDirections = Direction.values()
+for d in allDirections {
+  println("  ", d, "=", d.value)
+}
+
+# Enum methods: fromValue()
+var status404 = HttpStatus.fromValue(404)
+println("\nHttpStatus.fromValue(404):", status404)
+
+var statusOK = HttpStatus.fromValue(200)
+println("HttpStatus.fromValue(200):", statusOK)
+
+var dirN = Direction.fromValue("N")
+println("Direction.fromValue(\"N\"):", dirN)

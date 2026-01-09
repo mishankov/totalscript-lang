@@ -105,7 +105,7 @@ linters:
 
       # Built-in function globals are intentional
       - path: internal/stdlib/builtins\.go
-        text: "(Println|Typeof|Integer|Float|String|Boolean) is a global variable"
+        text: "(Println|Typeof|Integer|Float|String|Boolean|ErrorModel) is a global variable"
         linters:
           - gochecknoglobals
 

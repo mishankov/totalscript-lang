@@ -852,6 +852,7 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 	model := &ast.ModelLiteral{Token: p.curToken}
 	model.Fields = []*ast.ModelField{}
 	model.Methods = []*ast.ModelMethod{}
+	model.Constructors = []*ast.FunctionLiteral{}
 
 	if !p.expectPeek(token.LBRACE) {
 		return nil
@@ -860,16 +861,42 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 	p.nextToken()
 
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
-		// Parse field or method
-		if !p.curTokenIs(token.IDENT) {
-			p.peekError(token.IDENT)
+		// Parse field, method, or constructor
+		if !p.curTokenIs(token.IDENT) && !p.curTokenIs(token.CONSTRUCTOR) {
+			msg := "expected field, method, or constructor name in model"
+			p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
 			return nil
 		}
 
 		name := &ast.Identifier{Token: p.curToken, Value: p.curToken.Literal}
 
-		// Check if it's a method or field
+		// Check if it's a constructor, method, or field
 		switch {
+		case p.curTokenIs(token.CONSTRUCTOR) && p.peekTokenIs(token.ASSIGN):
+			// It's a constructor (constructor = function)
+			p.nextToken() // consume '='
+			p.nextToken() // move to 'function'
+
+			if !p.curTokenIs(token.FUNCTION) {
+				msg := "expected function after '=' in constructor"
+				p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+				return nil
+			}
+
+			fn := p.parseFunctionLiteral()
+			if fn == nil {
+				return nil
+			}
+
+			fnLit, ok := fn.(*ast.FunctionLiteral)
+			if !ok {
+				msg := "expected function literal"
+				p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+				return nil
+			}
+
+			model.Constructors = append(model.Constructors, fnLit)
+
 		case p.peekTokenIs(token.ASSIGN):
 			// It's a method (name = function)
 			p.nextToken() // consume '='

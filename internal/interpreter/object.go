@@ -225,10 +225,11 @@ func IsError(obj Object) bool {
 
 // Model represents a model definition (the type itself).
 type Model struct {
-	Name       string
-	FieldNames []string                       // Maintains field order
-	Fields     map[string]*ast.TypeExpression // Quick field lookup
-	Methods    map[string]*Function
+	Name         string
+	FieldNames   []string                       // Maintains field order
+	Fields       map[string]*ast.TypeExpression // Quick field lookup
+	Methods      map[string]*Function
+	Constructors []*Function // Custom constructors
 }
 
 func (m *Model) Type() ObjectType { return MODEL_OBJ }
