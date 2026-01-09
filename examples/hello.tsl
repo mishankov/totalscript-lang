@@ -1,14 +1,14 @@
 # Simple hello world example
-# Note: println() not yet implemented, so this just evaluates expressions
 
 var greeting = "Hello, TotalScript!"
 var version = 1
+
+println(greeting)
+println("Version:", version)
 
 # Calculate something
 var x = 10
 var y = 20
 var sum = x + y
 
-# This program runs successfully but produces no output
-# (Built-in functions like println() will be added in Phase 5)
-sum
+println("Sum of", x, "and", y, "is", sum)

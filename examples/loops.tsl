@@ -8,11 +8,15 @@ while i < 5 {
   i = i + 1
 }
 
+println("While loop sum (0..4):", whileSum)  # 10
+
 # For-in loop with range
 var rangeSum = 0
 for n in 0..5 {
   rangeSum = rangeSum + n
 }
+
+println("Range loop sum (0..4):", rangeSum)  # 10
 
 # For-in loop with array
 var arr = [10, 20, 30, 40]
@@ -21,11 +25,12 @@ for value in arr {
   arraySum = arraySum + value
 }
 
+println("Array loop sum:", arraySum)  # 100
+
 # C-style for loop
 var cSum = 0
 for var j = 0; j < 10; j = j + 1 {
   cSum = cSum + j
 }
 
-# Result: 45 (sum of 0..9)
-cSum
+println("C-style loop sum (0..9):", cSum)  # 45

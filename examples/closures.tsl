@@ -20,5 +20,7 @@ var c1b = counter1(2)  # 3
 var c2a = counter2(5)  # 105
 var c1c = counter1(3)  # 6
 
-# Result: 6
-c1c
+println("Counter 1 first call:", c1a)
+println("Counter 1 second call:", c1b)
+println("Counter 2 first call:", c2a)
+println("Counter 1 third call:", c1c)

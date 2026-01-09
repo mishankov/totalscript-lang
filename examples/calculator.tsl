@@ -30,7 +30,13 @@ var product = multiply(10, 5)   # 50
 var quotient = divide(10, 5)    # 2.0
 var squared = power(5, 2)       # 25
 
+println("10 + 5 =", sum)
+println("10 - 5 =", difference)
+println("10 * 5 =", product)
+println("10 / 5 =", quotient)
+println("5 ** 2 =", squared)
+
 # Compose operations
 var result = add(multiply(3, 4), divide(20, 4))  # 12 + 5 = 17
 
-result
+println("add(multiply(3, 4), divide(20, 4)) =", result)

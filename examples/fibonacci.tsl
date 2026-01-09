@@ -12,4 +12,4 @@ var f5 = fib(5)   # 5
 var f10 = fib(10) # 55
 
 # Returns the 10th fibonacci number
-f10
+println(f10)

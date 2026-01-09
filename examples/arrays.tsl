@@ -8,11 +8,13 @@ var mixed = [10, 20, 30]
 var first = numbers[0]      # 1
 var last = numbers[-1]      # 5 (negative indexing)
 
+println("First element:", first)
+println("Last element:", last)
+
 # Array iteration and sum
 var sum = 0
 for num in numbers {
   sum = sum + num
 }
 
-# Result: 15 (1 + 2 + 3 + 4 + 5)
-sum
+println("Sum of numbers:", sum)  # 15 (1 + 2 + 3 + 4 + 5)
