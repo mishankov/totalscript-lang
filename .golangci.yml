@@ -166,7 +166,7 @@ linters:
           - perfsprint
 
       # Evaluation functions return Object interface by design
-      - path: internal/interpreter/interpreter\.go
+      - path: internal/interpreter/(interpreter|types)\.go
         text: "function return 'Object' interface"
         linters:
           - iface

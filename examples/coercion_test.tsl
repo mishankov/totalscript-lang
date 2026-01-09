@@ -1,0 +1,30 @@
+# Test automatic integer-to-float coercion
+
+println("=== Integer-to-Float Coercion ===")
+
+var x: float = 42
+println("x (declared as float, assigned integer 42):", x)
+println("Type:", typeof(x))
+
+const Point = model {
+  x: float
+  y: float
+}
+
+var p = Point(3, 4)
+println("\nPoint with integer values:", p)
+println("p.x:", p.x, "Type:", typeof(p.x))
+println("p.y:", p.y, "Type:", typeof(p.y))
+
+const add = function(a: float, b: float) {
+  return a + b
+}
+
+println("\nadd(10, 20) with integer arguments:", add(10, 20))
+println("Type:", typeof(add(10, 20)))
+
+println("\n=== Array with Mixed Integer/Float ===")
+var nums: array<float> = [1, 2.5, 3, 4.5]
+println("nums:", nums)
+println("First element:", nums[0], "Type:", typeof(nums[0]))
+println("Second element:", nums[1], "Type:", typeof(nums[1]))

@@ -1,15 +1,19 @@
 package interpreter
 
+import "github.com/mishankov/totalscript-lang/internal/ast"
+
 // Environment represents a scope for variables.
 type Environment struct {
 	store map[string]Object
+	types map[string]*ast.TypeExpression
 	outer *Environment
 }
 
 // NewEnvironment creates a new environment.
 func NewEnvironment() *Environment {
 	s := make(map[string]Object)
-	return &Environment{store: s, outer: nil}
+	t := make(map[string]*ast.TypeExpression)
+	return &Environment{store: s, types: t, outer: nil}
 }
 
 // NewEnclosedEnvironment creates a new environment with an outer environment.
@@ -48,4 +52,18 @@ func (e *Environment) Set(name string, val Object) Object {
 	// Variable doesn't exist anywhere, create it in current scope
 	e.store[name] = val
 	return val
+}
+
+// GetType retrieves the type annotation for a variable.
+func (e *Environment) GetType(name string) (*ast.TypeExpression, bool) {
+	typeExpr, ok := e.types[name]
+	if !ok && e.outer != nil {
+		typeExpr, ok = e.outer.GetType(name)
+	}
+	return typeExpr, ok
+}
+
+// SetType sets the type annotation for a variable in the current scope.
+func (e *Environment) SetType(name string, typeExpr *ast.TypeExpression) {
+	e.types[name] = typeExpr
 }

@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/mishankov/totalscript-lang/internal/ast"
 )
@@ -27,6 +28,16 @@ func Eval(node ast.Node, env *Environment) Object {
 				return val
 			}
 		}
+		// Validate type if type annotation is present
+		if node.Type != nil {
+			if err := validateType(val, node.Type, env); err != nil {
+				return err
+			}
+			// Coerce value if needed (e.g., integer to float)
+			val = coerceValue(val, node.Type)
+			// Store type annotation for future reassignments
+			env.SetType(node.Name.Value, node.Type)
+		}
 		// If assigning a model or enum, set its name
 		if model, ok := val.(*Model); ok {
 			model.Name = node.Name.Value
@@ -40,6 +51,16 @@ func Eval(node ast.Node, env *Environment) Object {
 		val := Eval(node.Value, env)
 		if IsError(val) {
 			return val
+		}
+		// Validate type if type annotation is present
+		if node.Type != nil {
+			if err := validateType(val, node.Type, env); err != nil {
+				return err
+			}
+			// Coerce value if needed (e.g., integer to float)
+			val = coerceValue(val, node.Type)
+			// Store type annotation for constants too
+			env.SetType(node.Name.Value, node.Type)
 		}
 		// If assigning a model or enum, set its name
 		if model, ok := val.(*Model); ok {
@@ -508,6 +529,15 @@ func evalIdentifierAssignment(ident *ast.Identifier, operator string, val Object
 		}
 	}
 
+	// Validate type if variable has a type annotation
+	if typeExpr, ok := env.GetType(ident.Value); ok {
+		if err := validateType(val, typeExpr, env); err != nil {
+			return err
+		}
+		// Coerce value if needed (e.g., integer to float)
+		val = coerceValue(val, typeExpr)
+	}
+
 	// Set the variable
 	env.Set(ident.Value, val)
 	return val
@@ -740,6 +770,8 @@ func evalFloatInfixExpression(operator string, left, right Object) Object {
 			return newError("division by zero")
 		}
 		return &Float{Value: leftVal / rightVal}
+	case "**":
+		return &Float{Value: pow(leftVal, rightVal)}
 	case "<":
 		return nativeBoolToBooleanObject(leftVal < rightVal)
 	case ">":
@@ -825,6 +857,21 @@ func applyFunction(fn Object, args []Object) Object {
 				len(fn.Parameters), len(args))
 		}
 
+		// Validate parameter types if annotations are present and coerce if needed
+		for i, param := range fn.Parameters {
+			if param.Type != nil {
+				if err := validateType(args[i], param.Type, fn.Env); err != nil {
+					errObj, ok := err.(*Error)
+					if !ok {
+						return newError("unexpected error type in parameter validation")
+					}
+					return newError("parameter '%s': %s", param.Name.Value, errObj.Message)
+				}
+				// Coerce value if needed (e.g., integer to float)
+				args[i] = coerceValue(args[i], param.Type)
+			}
+		}
+
 		extendedEnv := extendFunctionEnv(fn, args)
 		evaluated := Eval(fn.Body, extendedEnv)
 		return unwrapReturnValue(evaluated)
@@ -843,6 +890,21 @@ func applyFunction(fn Object, args []Object) Object {
 		// Try custom constructors first
 		for _, constructor := range fn.Constructors {
 			if len(constructor.Parameters) == len(args) {
+				// Validate parameter types if annotations are present and coerce if needed
+				for i, param := range constructor.Parameters {
+					if param.Type != nil {
+						if err := validateType(args[i], param.Type, constructor.Env); err != nil {
+							errObj, ok := err.(*Error)
+							if !ok {
+								return newError("unexpected error type in constructor parameter validation")
+							}
+							return newError("constructor parameter '%s': %s", param.Name.Value, errObj.Message)
+						}
+						// Coerce value if needed (e.g., integer to float)
+						args[i] = coerceValue(args[i], param.Type)
+					}
+				}
+
 				// Found a matching constructor, call it
 				extendedEnv := extendFunctionEnv(constructor, args)
 				evaluated := Eval(constructor.Body, extendedEnv)
@@ -865,8 +927,34 @@ func applyFunction(fn Object, args []Object) Object {
 				fn.Name, len(fn.FieldNames), len(args))
 		}
 
-		// Assign arguments to fields in order
+		// Assign arguments to fields in order, validating types
+		// Get environment from first constructor or method, or create new one
+		var env *Environment
+		if len(fn.Constructors) > 0 {
+			env = fn.Constructors[0].Env
+		} else {
+			for _, method := range fn.Methods {
+				env = method.Env
+				break
+			}
+		}
+		if env == nil {
+			env = NewEnvironment()
+		}
+
 		for i, fieldName := range fn.FieldNames {
+			// Validate field type if annotation is present
+			if fieldType, ok := fn.Fields[fieldName]; ok && fieldType != nil {
+				if err := validateType(args[i], fieldType, env); err != nil {
+					errObj, ok := err.(*Error)
+					if !ok {
+						return newError("unexpected error type in field validation")
+					}
+					return newError("field '%s': %s", fieldName, errObj.Message)
+				}
+				// Coerce value if needed (e.g., integer to float)
+				args[i] = coerceValue(args[i], fieldType)
+			}
 			instance.Fields[fieldName] = args[i]
 		}
 
@@ -1226,6 +1314,10 @@ func nativeBoolToBooleanObject(input bool) *Boolean {
 		return TRUE
 	}
 	return FALSE
+}
+
+func pow(base, exponent float64) float64 {
+	return math.Pow(base, exponent)
 }
 
 func newError(format string, a ...interface{}) *Error {

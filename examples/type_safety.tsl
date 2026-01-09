@@ -1,0 +1,186 @@
+# Phase 7 Features: Type Safety and Enforcement
+
+println("=== Basic Type Annotations ===")
+var age: integer = 25
+var name: string = "Alice"
+var price: float = 19.99
+var active: boolean = true
+
+println("age:", age)
+println("name:", name)
+println("price:", price)
+println("active:", active)
+
+println("\n=== Union Types ===")
+# Union types allow a variable to be one of several types
+var id: integer | string = 12345
+println("id (as integer):", id)
+
+id = "ABC123"
+println("id (as string):", id)
+
+# Function that accepts union type
+const formatId = function(value: integer | string) {
+  if value is integer {
+    return "ID-" + string(value)
+  }
+  return "ID-" + value
+}
+
+println("Formatted integer ID:", formatId(100))
+println("Formatted string ID:", formatId("XYZ"))
+
+println("\n=== Optional Types ===")
+# Optional types can be the specified type or null
+var optionalName: string? = "Bob"
+println("optionalName:", optionalName)
+
+optionalName = null
+println("optionalName after setting to null:", optionalName)
+
+# Function with optional parameter handling
+const greet = function(name: string?) {
+  if name is null {
+    return "Hello, guest!"
+  }
+  return "Hello, " + name + "!"
+}
+
+println(greet("Charlie"))
+println(greet(null))
+
+println("\n=== Generic Array Types ===")
+# Enforce that all array elements have the same type
+var numbers: array<integer> = [1, 2, 3, 4, 5]
+println("numbers:", numbers)
+
+var names: array<string> = ["Alice", "Bob", "Charlie"]
+println("names:", names)
+
+var coordinates: array<float> = [1.5, 2.7, 3.14]
+println("coordinates:", coordinates)
+
+println("\n=== Union Types in Generics ===")
+# Arrays can contain union types, allowing mixed elements
+var mixed: array<integer | string> = [1, "two", 3, "four", 5]
+println("mixed array:", mixed)
+
+var flexibleData: array<float | boolean> = [1.5, true, 2.5, false, 3.7]
+println("flexible data:", flexibleData)
+
+# Function processing mixed-type arrays
+const processItems = function(items: array<integer | string>) {
+  var result = []
+  for item in items {
+    if item is integer {
+      result.push("Number: " + string(item))
+    } else {
+      result.push("Text: " + item)
+    }
+  }
+  return result
+}
+
+var processed = processItems([1, "hello", 42, "world"])
+println("processed items:", processed)
+
+println("\n=== Complex Type Combinations ===")
+# Optional array of integers
+var optionalNumbers: array<integer>? = [10, 20, 30]
+println("optionalNumbers:", optionalNumbers)
+
+optionalNumbers = null
+println("optionalNumbers after null:", optionalNumbers)
+
+# Optional union type
+var flexible: integer | string? = 42
+println("flexible (integer):", flexible)
+
+flexible = "text"
+println("flexible (string):", flexible)
+
+flexible = null
+println("flexible (null):", flexible)
+
+println("\n=== User-Defined Types ===")
+const Point = model {
+  x: float
+  y: float
+
+  magnitude = function() {
+    # Returns squared magnitude to avoid mixed-type power operation
+    return this.x * this.x + this.y * this.y
+  }
+}
+
+const Status = enum {
+  Pending = 0
+  Active = 1
+  Completed = 2
+}
+
+# Type annotations with models and enums
+var point: Point = Point(3, 4)
+println("point:", point)
+println("magnitude:", point.magnitude())
+
+var status: Status = Status.Active
+println("status:", status)
+println("status value:", status.value)
+
+println("\n=== Type Safety in Action ===")
+# The following would cause errors at runtime:
+# var badNumber: integer = "not a number"  # Error: type mismatch
+# var badArray: array<integer> = [1, "two"]  # Error: array element type mismatch
+# var badOptional: integer? = "text"  # Error: type mismatch
+
+println("Type safety ensures values match their declared types!")
+
+println("\n=== Practical Example: Type-Safe Configuration ===")
+const Config = model {
+  host: string
+  port: integer
+  timeout: float
+  debug: boolean
+  allowedUsers: array<string>
+}
+
+var config: Config = Config(
+  "localhost",
+  8080,
+  30.5,
+  true,
+  ["admin", "user1", "user2"]
+)
+
+println("Configuration:")
+println("  Host:", config.host)
+println("  Port:", config.port)
+println("  Timeout:", config.timeout, "seconds")
+println("  Debug mode:", config.debug)
+println("  Allowed users:", config.allowedUsers)
+
+println("\n=== Type-Safe API Response ===")
+const ApiResponse = model {
+  statusCode: integer
+  data: string?
+  error: string?
+}
+
+const success = function() {
+  return ApiResponse(200, "Data loaded successfully", null)
+}
+
+const failure = function() {
+  return ApiResponse(500, null, "Internal server error")
+}
+
+var response1: ApiResponse = success()
+println("\nSuccess response:")
+println("  Status:", response1.statusCode)
+println("  Data:", response1.data)
+
+var response2: ApiResponse = failure()
+println("\nError response:")
+println("  Status:", response2.statusCode)
+println("  Error:", response2.error)

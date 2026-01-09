@@ -4,6 +4,7 @@ package parser
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/mishankov/totalscript-lang/internal/ast"
 	"github.com/mishankov/totalscript-lang/internal/lexer"
@@ -834,6 +835,34 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 	return mapLit
 }
 
+func (p *Parser) parseGenericType() string {
+	// Parse a type name that could be a union (integer | string)
+	if !p.curTokenIs(token.IDENT) {
+		return ""
+	}
+
+	typeName := p.curToken.Literal
+
+	// Check for union inside generic
+	if p.peekTokenIs(token.PIPE) {
+		var parts []string
+		parts = append(parts, typeName)
+
+		for p.peekTokenIs(token.PIPE) {
+			p.nextToken() // consume '|'
+			p.nextToken() // move to next type
+			if p.curTokenIs(token.IDENT) {
+				parts = append(parts, p.curToken.Literal)
+			}
+		}
+
+		// Return as "type1 | type2"
+		return strings.Join(parts, " | ")
+	}
+
+	return typeName
+}
+
 func (p *Parser) parseTypeExpression() *ast.TypeExpression {
 	typeExpr := &ast.TypeExpression{Token: p.curToken}
 
@@ -845,12 +874,16 @@ func (p *Parser) parseTypeExpression() *ast.TypeExpression {
 		if p.peekTokenIs(token.LT) {
 			p.nextToken() // consume '<'
 			p.nextToken() // move to first type
-			typeExpr.Generic = append(typeExpr.Generic, p.curToken.Literal)
+
+			// Parse first generic type (could be union like "integer | string")
+			genericType := p.parseGenericType()
+			typeExpr.Generic = append(typeExpr.Generic, genericType)
 
 			for p.peekTokenIs(token.COMMA) {
 				p.nextToken() // consume comma
 				p.nextToken() // move to next type
-				typeExpr.Generic = append(typeExpr.Generic, p.curToken.Literal)
+				genericType := p.parseGenericType()
+				typeExpr.Generic = append(typeExpr.Generic, genericType)
 			}
 
 			if !p.expectPeek(token.GT) {

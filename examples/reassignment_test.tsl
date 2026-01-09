@@ -1,0 +1,42 @@
+# Test type validation on reassignments
+
+println("=== Valid Reassignments ===")
+var x: integer = 42
+println("x:", x)
+
+x = 100
+println("x after reassignment:", x)
+
+var name: string = "Alice"
+println("name:", name)
+
+name = "Bob"
+println("name after reassignment:", name)
+
+println("\n=== Union Type Reassignments ===")
+var id: integer | string = 42
+println("id (integer):", id)
+
+id = "ABC123"
+println("id (string):", id)
+
+id = 999
+println("id (integer again):", id)
+
+println("\n=== Optional Type Reassignments ===")
+var optional: string? = "value"
+println("optional:", optional)
+
+optional = null
+println("optional after null:", optional)
+
+optional = "back to string"
+println("optional after string:", optional)
+
+println("\n=== Invalid Reassignments (should error) ===")
+var num: integer = 42
+println("num:", num)
+
+# This should fail - reassigning integer to string
+num = "not a number"
+println("This should not print")

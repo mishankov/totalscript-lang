@@ -1,0 +1,58 @@
+# Test function parameter type validation
+
+println("=== Valid Function Calls ===")
+
+const add = function(a: integer, b: integer) {
+  return a + b
+}
+
+println("add(10, 20):", add(10, 20))
+
+const greet = function(name: string, age: integer) {
+  return "Hello " + name + ", you are " + string(age) + " years old"
+}
+
+println(greet("Alice", 25))
+
+println("\n=== Union Type Parameters ===")
+
+const process = function(value: integer | string) {
+  if value is integer {
+    return value * 2
+  }
+  return value + value
+}
+
+println("process(5):", process(5))
+println("process('Hi'):", process("Hi"))
+
+println("\n=== Optional Parameters ===")
+
+const display = function(message: string?) {
+  if message is null {
+    return "No message"
+  }
+  return "Message: " + message
+}
+
+println(display("Hello"))
+println(display(null))
+
+println("\n=== Model Constructor Validation ===")
+
+const Point = model {
+  x: float
+  y: float
+}
+
+var p1 = Point(3.0, 4.0)
+println("Valid point:", p1)
+
+println("\n=== Invalid Function Call (should error) ===")
+
+const calculate = function(x: integer) {
+  return x * 2
+}
+
+# This should fail - passing string to integer parameter
+println(calculate("not a number"))

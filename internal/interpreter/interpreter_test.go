@@ -1,6 +1,7 @@
 package interpreter
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/mishankov/totalscript-lang/internal/lexer"
@@ -613,14 +614,14 @@ func TestModelFieldAssignment(t *testing.T) {
 		x: float
 		y: float
 	}
-	var p = Point(3, 4)
-	p.x = 10
-	p.y = 20
+	var p = Point(3.0, 4.0)
+	p.x = 10.0
+	p.y = 20.0
 	p.x + p.y
 	`
 
 	evaluated := testEval(input)
-	testIntegerObject(t, evaluated, 30)
+	testFloatObject(t, evaluated, 30.0)
 }
 
 func TestModelFieldCompoundAssignment(t *testing.T) {
@@ -676,6 +677,247 @@ func TestArraySlicing(t *testing.T) {
 
 			for i, expectedVal := range tt.expected {
 				testIntegerObject(t, array.Elements[i], int64(expectedVal))
+			}
+		})
+	}
+}
+
+func TestTypeEnforcement(t *testing.T) {
+	tests := []struct {
+		input       string
+		shouldError bool
+		errorMsg    string
+	}{
+		// Valid simple types
+		{"var x: integer = 42; x", false, ""},
+		{"var x: float = 3.14; x", false, ""},
+		{"var x: string = \"hello\"; x", false, ""},
+		{"var x: boolean = true; x", false, ""},
+		{"const x: integer = 100; x", false, ""},
+
+		// Invalid simple types
+		{"var x: integer = \"not a number\"", true, "type mismatch: expected integer, got string"},
+		{"var x: string = 42", true, "type mismatch: expected string, got integer"},
+		{"var x: boolean = 123", true, "type mismatch: expected boolean, got integer"},
+		{"const x: float = \"text\"", true, "type mismatch: expected float, got string"},
+
+		// Union types - valid
+		{"var x: integer | string = 42; x", false, ""},
+		{"var x: integer | string = \"hello\"; x", false, ""},
+		{"var x: integer | float = 3.14; x", false, ""},
+
+		// Union types - invalid
+		{"var x: integer | string = true", true, "type mismatch: expected integer | string, got boolean"},
+		{"var x: integer | float = \"text\"", true, "type mismatch: expected integer | float, got string"},
+
+		// Optional types - valid
+		{"var x: integer? = 42; x", false, ""},
+		{"var x: integer? = null; x", false, ""},
+		{"var x: string? = \"hello\"; x", false, ""},
+		{"var x: string? = null; x", false, ""},
+
+		// Optional types - invalid
+		{"var x: integer? = \"text\"", true, "type mismatch: expected integer, got string"},
+		{"var x: string? = 42", true, "type mismatch: expected string, got integer"},
+
+		// Generic types - valid
+		{"var x: array<integer> = [1, 2, 3]; x", false, ""},
+		{"var x: array<string> = [\"a\", \"b\"]; x", false, ""},
+		{"var x: array<float> = [1.1, 2.2]; x", false, ""},
+
+		// Generic types - invalid
+		{"var x: array<integer> = [1, \"two\", 3]", true, "array element 1: type mismatch: expected integer, got string"},
+		{"var x: array<string> = [\"a\", 2, \"c\"]", true, "array element 1: type mismatch: expected string, got integer"},
+
+		// Union types inside generics - valid
+		{"var x: array<integer | string> = [1, \"two\", 3]; x", false, ""},
+		{"var x: array<integer | string> = [\"a\", 1, \"b\", 2]; x", false, ""},
+		{"var x: array<float | boolean> = [1.5, true, 2.5, false]; x", false, ""},
+
+		// Union types inside generics - invalid
+		{"var x: array<integer | string> = [1, \"two\", true]", true, "array element 2: type mismatch: expected integer | string, got boolean"},
+		{"var x: array<float | string> = [1.5, \"text\", 42]; x", false, ""}, // 42 is coerced to 42.0 (integer-to-float coercion)
+		{"var x: array<float | string> = [1.5, \"text\", true]", true, "array element 2: type mismatch: expected float | string, got boolean"},
+
+		// Complex combinations
+		{"var x: array<integer>? = [1, 2, 3]; x", false, ""},
+		{"var x: array<integer>? = null; x", false, ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			evaluated := testEval(tt.input)
+
+			if tt.shouldError {
+				errObj, ok := evaluated.(*Error)
+				if !ok {
+					t.Fatalf("expected error, got %T (%+v)", evaluated, evaluated)
+				}
+				if !strings.Contains(errObj.Message, tt.errorMsg) {
+					t.Errorf("wrong error message. expected to contain %q, got %q",
+						tt.errorMsg, errObj.Message)
+				}
+			} else if IsError(evaluated) {
+				t.Fatalf("unexpected error: %s", evaluated.(*Error).Message)
+			}
+		})
+	}
+}
+
+func TestModelTypeEnforcement(t *testing.T) {
+	input := `
+	const Point = model {
+		x: float
+		y: float
+	}
+
+	var p1: Point = Point(3.0, 4.0)
+	var p2: Point = 42
+	`
+
+	evaluated := testEval(input)
+	errObj, ok := evaluated.(*Error)
+	if !ok {
+		t.Fatalf("expected error, got %T", evaluated)
+	}
+	if !strings.Contains(errObj.Message, "type mismatch: expected Point") {
+		t.Errorf("wrong error message: %s", errObj.Message)
+	}
+}
+
+func TestEnumTypeEnforcement(t *testing.T) {
+	input := `
+	const Status = enum {
+		OK = 200
+		Error = 500
+	}
+
+	var s1: Status = Status.OK
+	var s2: Status = 42
+	`
+
+	evaluated := testEval(input)
+	errObj, ok := evaluated.(*Error)
+	if !ok {
+		t.Fatalf("expected error, got %T", evaluated)
+	}
+	if !strings.Contains(errObj.Message, "type mismatch: expected Status") {
+		t.Errorf("wrong error message: %s", errObj.Message)
+	}
+}
+
+func TestReassignmentTypeValidation(t *testing.T) {
+	tests := []struct {
+		input       string
+		shouldError bool
+		errorMsg    string
+	}{
+		// Valid reassignments
+		{"var x: integer = 42; x = 100; x", false, ""},
+		{"var name: string = \"Alice\"; name = \"Bob\"; name", false, ""},
+		{"var id: integer | string = 42; id = \"ABC\"; id", false, ""},
+		{"var opt: string? = \"value\"; opt = null; opt", false, ""},
+
+		// Invalid reassignments
+		{"var x: integer = 42; x = \"string\"", true, "type mismatch: expected integer, got string"},
+		{"var name: string = \"Alice\"; name = 123", true, "type mismatch: expected string, got integer"},
+		{"var x: integer | string = 42; x = true", true, "type mismatch: expected integer | string, got boolean"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			evaluated := testEval(tt.input)
+
+			if tt.shouldError {
+				errObj, ok := evaluated.(*Error)
+				if !ok {
+					t.Fatalf("expected error, got %T (%+v)", evaluated, evaluated)
+				}
+				if !strings.Contains(errObj.Message, tt.errorMsg) {
+					t.Errorf("wrong error message. expected to contain %q, got %q",
+						tt.errorMsg, errObj.Message)
+				}
+			} else if IsError(evaluated) {
+				t.Fatalf("unexpected error: %s", evaluated.(*Error).Message)
+			}
+		})
+	}
+}
+
+func TestFunctionParameterTypeValidation(t *testing.T) {
+	tests := []struct {
+		input       string
+		shouldError bool
+		errorMsg    string
+	}{
+		// Valid function calls
+		{
+			`const add = function(a: integer, b: integer) { return a + b }
+			 add(10, 20)`,
+			false,
+			"",
+		},
+		{
+			`const greet = function(name: string) { return "Hello " + name }
+			 greet("Alice")`,
+			false,
+			"",
+		},
+		{
+			`const process = function(value: integer | string) { return value }
+			 process(42)`,
+			false,
+			"",
+		},
+		{
+			`const process = function(value: integer | string) { return value }
+			 process("text")`,
+			false,
+			"",
+		},
+		{
+			`const display = function(msg: string?) { return msg }
+			 display(null)`,
+			false,
+			"",
+		},
+
+		// Invalid function calls
+		{
+			`const add = function(x: integer) { return x * 2 }
+			 add("not a number")`,
+			true,
+			"parameter 'x': type mismatch: expected integer, got string",
+		},
+		{
+			`const greet = function(name: string) { return name }
+			 greet(123)`,
+			true,
+			"parameter 'name': type mismatch: expected string, got integer",
+		},
+		{
+			`const process = function(value: integer | string) { return value }
+			 process(true)`,
+			true,
+			"parameter 'value': type mismatch: expected integer | string, got boolean",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input[:50], func(t *testing.T) {
+			evaluated := testEval(tt.input)
+
+			if tt.shouldError {
+				errObj, ok := evaluated.(*Error)
+				if !ok {
+					t.Fatalf("expected error, got %T (%+v)", evaluated, evaluated)
+				}
+				if !strings.Contains(errObj.Message, tt.errorMsg) {
+					t.Errorf("wrong error message. expected to contain %q, got %q",
+						tt.errorMsg, errObj.Message)
+				}
+			} else if IsError(evaluated) {
+				t.Fatalf("unexpected error: %s", evaluated.(*Error).Message)
 			}
 		})
 	}
