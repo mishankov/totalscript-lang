@@ -1,0 +1,108 @@
+# Phase 8 Features: Assignment and Slicing
+
+println("=== Array Index Assignment ===")
+var nums = [1, 2, 3, 4, 5]
+println("Original:", nums)
+
+nums[0] = 10
+println("After nums[0] = 10:", nums)
+
+nums[-1] = 50
+println("After nums[-1] = 50:", nums)
+
+nums[2] += 100
+println("After nums[2] += 100:", nums)
+
+println("\n=== Map Index Assignment ===")
+var person = {"name": "Alice", "age": 30}
+println("Original:", person)
+
+person["name"] = "Bob"
+println("After person[\"name\"] = \"Bob\":", person)
+
+person["city"] = "NYC"
+println("After person[\"city\"] = \"NYC\":", person)
+
+person["age"] += 5
+println("After person[\"age\"] += 5:", person)
+
+println("\n=== Model Field Assignment ===")
+const Rectangle = model {
+  width: float
+  height: float
+
+  area = function() {
+    return this.width * this.height
+  }
+}
+
+var rect = Rectangle(10, 20)
+println("Original rectangle:", rect)
+println("Area:", rect.area())
+
+rect.width = 15
+rect.height = 25
+println("After resizing:", rect)
+println("New area:", rect.area())
+
+rect.width *= 2
+println("After rect.width *= 2:", rect)
+println("Final area:", rect.area())
+
+println("\n=== Array Slicing ===")
+var arr = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+println("Original array:", arr)
+
+println("\nBasic slicing:")
+println("arr[2..5]:", arr[2..5])
+println("arr[2..=5]:", arr[2..=5])
+
+println("\nOpen-ended slicing:")
+println("arr[..3]:", arr[..3])
+println("arr[..=3]:", arr[..=3])
+println("arr[7..]:", arr[7..])
+println("arr[..]:", arr[..])
+
+println("\nNegative index slicing:")
+println("arr[-5..-2]:", arr[-5..-2])
+println("arr[-3..]:", arr[-3..])
+println("arr[..-3]:", arr[..-3])
+
+println("\n=== Combining Assignment and Slicing ===")
+var data = [10, 20, 30, 40, 50]
+println("Original data:", data)
+
+# Modify some elements
+data[1] = 25
+data[3] = 45
+println("After modifications:", data)
+
+# Get a slice
+var subset = data[1..4]
+println("Subset data[1..4]:", subset)
+
+# Modify the slice (creates new array, doesn't affect original)
+subset[0] = 99
+println("Modified subset:", subset)
+println("Original data (unchanged):", data)
+
+println("\n=== Practical Example: Moving Average ===")
+var prices = [100, 102, 98, 105, 103, 107, 110, 108]
+println("Prices:", prices)
+
+# Calculate 3-day moving averages
+var window_size = 3
+var averages = []
+
+var i = 0
+for i in 0..=(prices.length() - window_size) {
+  var window = prices[i..i+window_size]
+  var sum = 0
+  for price in window {
+    sum += price
+  }
+  var avg = sum / window_size
+  averages.push(avg)
+}
+
+println("3-day moving averages:", averages)

@@ -168,6 +168,12 @@ func Eval(node ast.Node, env *Environment) Object {
 		if IsError(left) {
 			return left
 		}
+
+		// Check if this is a slice operation (index is a RangeExpression)
+		if rangeExpr, ok := node.Index.(*ast.RangeExpression); ok {
+			return evalSliceExpression(left, rangeExpr, env)
+		}
+
 		index := Eval(node.Index, env)
 		if IsError(index) {
 			return index
@@ -446,20 +452,34 @@ func evalInfixExpression(operator string, left, right Object) Object {
 }
 
 func evalAssignmentExpression(node *ast.InfixExpression, env *Environment) Object {
-	// Get the identifier name from the left side
-	ident, ok := node.Left.(*ast.Identifier)
-	if !ok {
-		return newError("cannot assign to %T", node.Left)
-	}
-
-	// Evaluate the right side
+	// Evaluate the right side first
 	val := Eval(node.Right, env)
 	if IsError(val) {
 		return val
 	}
 
+	// Handle different left-hand side types
+	switch left := node.Left.(type) {
+	case *ast.Identifier:
+		// Simple variable assignment: x = value
+		return evalIdentifierAssignment(left, node.Operator, val, env)
+
+	case *ast.IndexExpression:
+		// Index assignment: arr[0] = value or map["key"] = value
+		return evalIndexAssignment(left, node.Operator, val, env)
+
+	case *ast.MemberExpression:
+		// Member assignment: obj.field = value
+		return evalMemberAssignment(left, node.Operator, val, env)
+
+	default:
+		return newError("cannot assign to %T", node.Left)
+	}
+}
+
+func evalIdentifierAssignment(ident *ast.Identifier, operator string, val Object, env *Environment) Object {
 	// Handle compound assignment operators
-	if node.Operator != "=" {
+	if operator != "=" {
 		// Get current value
 		currentVal, ok := env.Get(ident.Value)
 		if !ok {
@@ -468,7 +488,7 @@ func evalAssignmentExpression(node *ast.InfixExpression, env *Environment) Objec
 
 		// Determine the arithmetic operator
 		var op string
-		switch node.Operator {
+		switch operator {
 		case "+=":
 			op = "+"
 		case "-=":
@@ -490,6 +510,146 @@ func evalAssignmentExpression(node *ast.InfixExpression, env *Environment) Objec
 
 	// Set the variable
 	env.Set(ident.Value, val)
+	return val
+}
+
+func evalIndexAssignment(indexExpr *ast.IndexExpression, operator string, val Object, env *Environment) Object {
+	// Evaluate the object being indexed
+	obj := Eval(indexExpr.Left, env)
+	if IsError(obj) {
+		return obj
+	}
+
+	// Evaluate the index
+	index := Eval(indexExpr.Index, env)
+	if IsError(index) {
+		return index
+	}
+
+	// Handle compound assignment operators
+	if operator != "=" {
+		// Get current value at index
+		currentVal := evalIndexExpression(obj, index)
+		if IsError(currentVal) {
+			return currentVal
+		}
+
+		// Determine the arithmetic operator
+		var op string
+		switch operator {
+		case "+=":
+			op = "+"
+		case "-=":
+			op = "-"
+		case "*=":
+			op = "*"
+		case "/=":
+			op = "/"
+		case "%=":
+			op = "%"
+		}
+
+		// Perform the operation
+		val = evalInfixExpression(op, currentVal, val)
+		if IsError(val) {
+			return val
+		}
+	}
+
+	// Handle array and map index assignment
+	switch objType := obj.(type) {
+	case *Array:
+		// Array index assignment
+		idx, ok := index.(*Integer)
+		if !ok {
+			return newError("array index must be integer, got %s", index.Type())
+		}
+
+		arrayLen := int64(len(objType.Elements))
+		indexVal := idx.Value
+
+		// Handle negative indices
+		if indexVal < 0 {
+			indexVal = arrayLen + indexVal
+		}
+
+		// Validate index bounds
+		if indexVal < 0 || indexVal >= arrayLen {
+			return newError("array index out of bounds: %d", idx.Value)
+		}
+
+		// Modify the array element in place
+		objType.Elements[indexVal] = val
+		return val
+
+	case *Map:
+		// Map index assignment
+		keyStr, ok := index.(*String)
+		if !ok {
+			return newError("map key must be string, got %s", index.Type())
+		}
+
+		// Set the key-value pair
+		objType.Pairs[keyStr.Value] = val
+		return val
+
+	default:
+		return newError("index assignment not supported for %s", obj.Type())
+	}
+}
+
+func evalMemberAssignment(memberExpr *ast.MemberExpression, operator string, val Object, env *Environment) Object {
+	// Evaluate the object
+	obj := Eval(memberExpr.Object, env)
+	if IsError(obj) {
+		return obj
+	}
+
+	// Only ModelInstance supports field assignment
+	instance, ok := obj.(*ModelInstance)
+	if !ok {
+		return newError("member assignment only supported for model instances, got %s", obj.Type())
+	}
+
+	memberName := memberExpr.Member.Value
+
+	// Check if field exists in model
+	if _, exists := instance.Model.Fields[memberName]; !exists {
+		return newError("model %s has no field '%s'", instance.Model.Name, memberName)
+	}
+
+	// Handle compound assignment operators
+	if operator != "=" {
+		// Get current field value
+		currentVal, exists := instance.Fields[memberName]
+		if !exists {
+			return newError("field '%s' not initialized", memberName)
+		}
+
+		// Determine the arithmetic operator
+		var op string
+		switch operator {
+		case "+=":
+			op = "+"
+		case "-=":
+			op = "-"
+		case "*=":
+			op = "*"
+		case "/=":
+			op = "/"
+		case "%=":
+			op = "%"
+		}
+
+		// Perform the operation
+		val = evalInfixExpression(op, currentVal, val)
+		if IsError(val) {
+			return val
+		}
+	}
+
+	// Set the field value
+	instance.Fields[memberName] = val
 	return val
 }
 
@@ -955,6 +1115,83 @@ func evalRangeExpression(node *ast.RangeExpression, env *Environment) Object {
 	for i := startInt.Value; i < endVal; i++ {
 		elements = append(elements, &Integer{Value: i})
 	}
+
+	return &Array{Elements: elements}
+}
+
+func evalSliceExpression(obj Object, rangeExpr *ast.RangeExpression, env *Environment) Object {
+	// Only arrays support slicing
+	arr, ok := obj.(*Array)
+	if !ok {
+		return newError("slice operation only supported for arrays, got %s", obj.Type())
+	}
+
+	arrayLen := int64(len(arr.Elements))
+
+	// Evaluate start index (default to 0 if not specified)
+	var startIdx int64
+	if rangeExpr.Start != nil {
+		start := Eval(rangeExpr.Start, env)
+		if IsError(start) {
+			return start
+		}
+		startInt, ok := start.(*Integer)
+		if !ok {
+			return newError("slice start must be integer, got %s", start.Type())
+		}
+		startIdx = startInt.Value
+		// Handle negative indices
+		if startIdx < 0 {
+			startIdx = arrayLen + startIdx
+		}
+	} else {
+		startIdx = 0
+	}
+
+	// Evaluate end index (default to array length if not specified)
+	var endIdx int64
+	if rangeExpr.End != nil {
+		end := Eval(rangeExpr.End, env)
+		if IsError(end) {
+			return end
+		}
+		endInt, ok := end.(*Integer)
+		if !ok {
+			return newError("slice end must be integer, got %s", end.Type())
+		}
+		endIdx = endInt.Value
+		// Handle negative indices
+		if endIdx < 0 {
+			endIdx = arrayLen + endIdx
+		}
+		// Handle inclusive range
+		if rangeExpr.Inclusive {
+			endIdx++
+		}
+	} else {
+		endIdx = arrayLen
+	}
+
+	// Clamp bounds to valid range
+	if startIdx < 0 {
+		startIdx = 0
+	}
+	if startIdx > arrayLen {
+		startIdx = arrayLen
+	}
+	if endIdx < 0 {
+		endIdx = 0
+	}
+	if endIdx > arrayLen {
+		endIdx = arrayLen
+	}
+	if startIdx > endIdx {
+		startIdx = endIdx
+	}
+
+	// Create the sliced array
+	elements := make([]Object, endIdx-startIdx)
+	copy(elements, arr.Elements[startIdx:endIdx])
 
 	return &Array{Elements: elements}
 }

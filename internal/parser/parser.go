@@ -102,6 +102,8 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.MODEL, p.parseModelLiteral)
 	p.registerPrefix(token.ENUM, p.parseEnumLiteral)
 	p.registerPrefix(token.THIS, p.parseThisExpression)
+	p.registerPrefix(token.DOTDOT, p.parsePrefixRangeExpression)
+	p.registerPrefix(token.DOTDOTEQ, p.parsePrefixRangeExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
@@ -734,8 +736,12 @@ func (p *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
 	p.nextToken()
 	exp.Index = p.parseExpression(LOWEST)
 
-	if !p.expectPeek(token.RBRACKET) {
-		return nil
+	// After parsing the index expression, we should be at RBRACKET
+	// (range expressions may leave us there) or the next token should be RBRACKET
+	if !p.curTokenIs(token.RBRACKET) {
+		if !p.expectPeek(token.RBRACKET) {
+			return nil
+		}
 	}
 
 	return exp
@@ -762,7 +768,33 @@ func (p *Parser) parseRangeExpression(left ast.Expression) ast.Expression {
 
 	precedence := p.curPrecedence()
 	p.nextToken()
-	exp.End = p.parseExpression(precedence)
+
+	// Check for open-ended range (e.g., 5..)
+	// If the next token is a delimiter like ], ), or comma, the range has no end
+	if p.curTokenIs(token.RBRACKET) || p.curTokenIs(token.RPAREN) || p.curTokenIs(token.COMMA) {
+		exp.End = nil
+	} else {
+		exp.End = p.parseExpression(precedence)
+	}
+
+	return exp
+}
+
+func (p *Parser) parsePrefixRangeExpression() ast.Expression {
+	exp := &ast.RangeExpression{
+		Token:     p.curToken,
+		Start:     nil, // Open-ended start (e.g., ..5)
+		Inclusive: p.curTokenIs(token.DOTDOTEQ),
+	}
+
+	p.nextToken()
+
+	// Check for fully open-ended range (e.g., ..)
+	if p.curTokenIs(token.RBRACKET) || p.curTokenIs(token.RPAREN) || p.curTokenIs(token.COMMA) {
+		exp.End = nil
+	} else {
+		exp.End = p.parseExpression(RANGE)
+	}
 
 	return exp
 }

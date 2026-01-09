@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TotalScript is a scripting language implementation in Go with batteries included (built-in database and HTTP server). The project implements a complete interpreter following the classic compiler architecture pattern.
 
-**Current Status**: Phases 1-6 complete! Core language with models, enums, and standard library (~70% of specification implemented).
+**Current Status**: Phases 1-6 & 8 complete! Core language with models, enums, assignment operations, and array slicing (~75% of specification implemented).
 
 **Implementation Progress**:
 - ✅ **Phase 1**: Lexer - All tokens, comments, string escapes (100%)
@@ -16,9 +16,10 @@ TotalScript is a scripting language implementation in Go with batteries included
 - ✅ **Phase 5**: Built-ins - stdlib functions and methods (100%)
 - ✅ **Phase 6**: Models & Enums - User-defined types (100% spec compliant)
 - ❌ **Phase 7**: Advanced Types - Union types, optional types (0%)
-- ❌ **Phase 8**: Modules - Import system (0%)
-- ❌ **Phase 9**: Database - SQLite integration (0%)
-- ❌ **Phase 10**: HTTP - Server and client (0%)
+- ✅ **Phase 8**: Collection Assignment & Slicing - Index/member assignment, array slicing (100%)
+- ❌ **Phase 9**: Modules - Import system (0%)
+- ❌ **Phase 10**: Database - SQLite integration (0%)
+- ❌ **Phase 11**: HTTP - Server and client (0%)
 
 ## Commands
 
@@ -275,6 +276,11 @@ The following features from `specification.md` are fully implemented and tested:
 - **Array indexing**: `arr[0]`, `arr[-1]` (negative indices from end)
 - **Map indexing**: `map["key"]` returns value or NULL if missing
 - **Heterogeneous collections**: Arrays and maps can hold mixed types
+- **Array index assignment**: `arr[0] = value`, `arr[-1] = value` with compound operators (`+=`, `-=`, etc.)
+- **Map index assignment**: `map["key"] = value` including new key creation
+- **Model field assignment**: `obj.field = value` with compound operators
+- **Array slicing**: `arr[1..3]` (exclusive), `arr[1..=3]` (inclusive), `arr[2..]`, `arr[..3]`, `arr[..]`
+- **Negative index slicing**: `arr[-3..-1]`, `arr[-3..]`, `arr[..-3]`
 
 ### Built-in Functions & Standard Library
 - **Output**: `println()` for console output
@@ -324,10 +330,6 @@ Features that are parsed but not fully functional:
 
 Features defined in `specification.md` but not yet implemented:
 
-### Collection Limitations
-- **Index assignment**: Cannot do `arr[0] = val` or `map["key"] = val` (collections effectively immutable via index)
-- **Array slicing**: Cannot do `arr[1..3]`, `arr[2..]`, `arr[..3]`
-
 ### Advanced Features
 - **Union types enforcement**: Syntax parsed but not validated at runtime
 - **Optional types enforcement**: Syntax parsed but not validated at runtime
@@ -341,27 +343,18 @@ Features defined in `specification.md` but not yet implemented:
 
 Current implementation limitations to be aware of:
 
-### Assignment Limitations
-1. **Only simple identifiers**: Can only assign to variables like `x = 5`
-2. **No index assignment**: Cannot do `arr[0] = val` or `map["key"] = val` (must use `.push()`, `.insert()`, etc.)
-3. **No member assignment**: Cannot do `obj.field = val` (model fields are set at construction)
-4. **Workaround**: Use array/map methods (`.push()`, `.insert()`, `.remove()`) or recreate objects
-
-### Expression Limitations
-5. **No array slicing**: Only single index access works (`arr[0]`), not ranges (`arr[1..3]`)
-
 ### Type System Limitations
-6. **Type annotations not enforced**: Parsed for documentation but no runtime validation
-7. **No type narrowing**: `is` operator checks type but doesn't affect subsequent code flow
-8. **No generics enforcement**: Generic syntax `array<integer>` parsed but not enforced
-9. **No union type enforcement**: Syntax parsed but not validated
-10. **No optional type enforcement**: Syntax parsed but not validated
+1. **Type annotations not enforced**: Parsed for documentation but no runtime validation
+2. **No type narrowing**: `is` operator checks type but doesn't affect subsequent code flow
+3. **No generics enforcement**: Generic syntax `array<integer>` parsed but not enforced
+4. **No union type enforcement**: Syntax parsed but not validated
+5. **No optional type enforcement**: Syntax parsed but not validated
 
 ### Missing Features
-11. **No standard library modules**: No `math`, `json`, `fs`, `time`, `os`, `crypto` modules
-12. **No modules/imports**: Cannot split code across multiple files
-13. **No database integration**: No built-in SQLite support
-14. **No HTTP support**: No built-in HTTP server or client
+6. **No standard library modules**: No `math`, `json`, `fs`, `time`, `os`, `crypto` modules
+7. **No modules/imports**: Cannot split code across multiple files
+8. **No database integration**: No built-in SQLite support
+9. **No HTTP support**: No built-in HTTP server or client
 
 ## Specification Compliance
 
@@ -369,8 +362,8 @@ Current implementation limitations to be aware of:
 
 All implemented features correctly follow `specification.md`. There are no deviations or specification violations. The implementation uses a phased approach:
 
-- **Phases 1-6** (Core Language, Built-ins, Models & Enums): ✅ Complete and spec-compliant
-- **Phases 7-10** (Advanced features): ❌ Not yet started
+- **Phases 1-6, 8** (Core Language, Built-ins, Models & Enums, Assignment & Slicing): ✅ Complete and spec-compliant
+- **Phases 7, 9-11** (Advanced features): ❌ Not yet started
 
 ### Feature Coverage Matrix
 
@@ -380,7 +373,7 @@ All implemented features correctly follow `specification.md`. There are no devia
 | **Operators** | 100% | ✅ Complete |
 | **Control Flow** | 100% | ✅ Complete |
 | **Functions** | 95% | ✅ Complete (no overloading) |
-| **Collections** | 90% | ✅ Complete (no slicing, no index assignment) |
+| **Collections** | 100% | ✅ Complete (full assignment & slicing) |
 | **Type System** | 70% | ⚠️ `is` works, annotations not enforced |
 | **Built-in Functions** | 100% | ✅ Complete |
 | **String Methods** | 100% | ✅ Complete |
@@ -391,7 +384,7 @@ All implemented features correctly follow `specification.md`. There are no devia
 | **Modules** | 0% | ❌ Not implemented |
 | **Database** | 0% | ❌ Not implemented |
 | **HTTP** | 0% | ❌ Not implemented |
-| **Overall** | ~70% | ✅ Core Complete |
+| **Overall** | ~75% | ✅ Core Complete |
 
 ### Testing Coverage
 
@@ -418,15 +411,6 @@ Implementation notes:
 - Extend `evalVarStatement` and `evalConstStatement` to validate types
 - Add type checking in assignment operations
 - Implement type guards for narrowing
-
-### Phase 8: Collection Assignment & Slicing
-**Priority**: HIGH - Makes collections more practical
-
-Features:
-1. **Index assignment**: `arr[0] = newValue`, `map["key"] = newValue`
-2. **Member assignment**: `obj.field = newValue` for model instances
-3. **Array slicing**: `arr[1..3]`, `arr[2..]`, `arr[..3]`
-4. Modify `evalAssignmentExpression()` to handle `IndexExpression` and `MemberExpression` as left-hand side
 
 ### Phase 9: Modules and Imports
 **Priority**: MEDIUM - Code organization
@@ -475,10 +459,15 @@ Based on dependencies and impact:
    - Enums with `.values()` and `.fromValue()` methods
    - Extended `is` operator for built-in types
    - Built-in Error model
-4. **Phase 7**: Advanced type system (union types, optional types, type narrowing)
-5. **Phase 8**: Collection assignment and slicing
+4. ✅ **Phase 8**: Collection Assignment & Slicing - COMPLETE
+   - Array index assignment: `arr[0] = value`, compound operators
+   - Map index assignment: `map["key"] = value`, new key creation
+   - Model field assignment: `obj.field = value`, compound operators
+   - Array slicing: `arr[1..3]`, `arr[2..]`, `arr[..3]`, `arr[..]`
+   - Negative index slicing: `arr[-3..-1]`, `arr[-3..]`, `arr[..-3]`
+5. **Phase 7**: Advanced type system (union types, optional types, type narrowing)
 6. **Phase 9**: Modules and imports
 7. **Phase 10**: Database integration
 8. **Phase 11**: HTTP server and client
 
-**Current Status**: Core language complete (Phases 1-6). Ready for advanced features.
+**Current Status**: Core language complete (Phases 1-6, 8). Ready for advanced features.

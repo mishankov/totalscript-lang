@@ -539,6 +539,148 @@ func TestRangeExpression(t *testing.T) {
 	}
 }
 
+func TestArrayIndexAssignment(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		// Basic assignment
+		{"var arr = [1, 2, 3]; arr[0] = 10; arr[0]", 10},
+		{"var arr = [1, 2, 3]; arr[1] = 20; arr[1]", 20},
+		{"var arr = [1, 2, 3]; arr[2] = 30; arr", []int{1, 2, 30}},
+		// Negative index assignment
+		{"var arr = [1, 2, 3]; arr[-1] = 99; arr[2]", 99},
+		{"var arr = [1, 2, 3]; arr[-2] = 88; arr[1]", 88},
+		// Compound assignment operators
+		{"var arr = [10, 20, 30]; arr[0] += 5; arr[0]", 15},
+		{"var arr = [10, 20, 30]; arr[1] -= 5; arr[1]", 15},
+		{"var arr = [10, 20, 30]; arr[2] *= 2; arr[2]", 60},
+		{"var arr = [10, 20, 30]; arr[0] /= 2; arr[0]", 5.0},
+		{"var arr = [10, 20, 30]; arr[1] %= 7; arr[1]", 6},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+
+		switch expected := tt.expected.(type) {
+		case int:
+			testIntegerObject(t, evaluated, int64(expected))
+		case float64:
+			testFloatObject(t, evaluated, expected)
+		case []int:
+			array, ok := evaluated.(*Array)
+			if !ok {
+				t.Errorf("object is not Array. got=%T (%+v)", evaluated, evaluated)
+				continue
+			}
+			if len(array.Elements) != len(expected) {
+				t.Errorf("array has wrong length. expected=%d, got=%d",
+					len(expected), len(array.Elements))
+				continue
+			}
+			for i, expectedVal := range expected {
+				testIntegerObject(t, array.Elements[i], int64(expectedVal))
+			}
+		}
+	}
+}
+
+func TestMapIndexAssignment(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected interface{}
+	}{
+		// Basic assignment
+		{`var m = {"a": 1}; m["a"] = 10; m["a"]`, 10},
+		{`var m = {"a": 1, "b": 2}; m["b"] = 20; m["b"]`, 20},
+		// New key assignment
+		{`var m = {"a": 1}; m["c"] = 30; m["c"]`, 30},
+		// Compound assignment operators
+		{`var m = {"x": 10}; m["x"] += 5; m["x"]`, 15},
+		{`var m = {"x": 20}; m["x"] -= 5; m["x"]`, 15},
+		{`var m = {"x": 10}; m["x"] *= 3; m["x"]`, 30},
+	}
+
+	for _, tt := range tests {
+		evaluated := testEval(tt.input)
+		testIntegerObject(t, evaluated, int64(tt.expected.(int)))
+	}
+}
+
+func TestModelFieldAssignment(t *testing.T) {
+	input := `
+	const Point = model {
+		x: float
+		y: float
+	}
+	var p = Point(3, 4)
+	p.x = 10
+	p.y = 20
+	p.x + p.y
+	`
+
+	evaluated := testEval(input)
+	testIntegerObject(t, evaluated, 30)
+}
+
+func TestModelFieldCompoundAssignment(t *testing.T) {
+	input := `
+	const Counter = model {
+		value: integer
+	}
+	var c = Counter(10)
+	c.value += 5
+	c.value *= 2
+	c.value
+	`
+
+	evaluated := testEval(input)
+	testIntegerObject(t, evaluated, 30)
+}
+
+func TestArraySlicing(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected []int
+	}{
+		// Basic slicing
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[1..4]", []int{1, 2, 3}},
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[1..=4]", []int{1, 2, 3, 4}},
+		// Open-ended slicing
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[..3]", []int{0, 1, 2}},
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[..=3]", []int{0, 1, 2, 3}},
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[3..]", []int{3, 4, 5}},
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[..]", []int{0, 1, 2, 3, 4, 5}},
+		// Negative indices
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[-3..-1]", []int{3, 4}},
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[-3..]", []int{3, 4, 5}},
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[..-2]", []int{0, 1, 2, 3}},
+		// Edge cases
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[2..2]", []int{}},
+		{"var arr = [0, 1, 2, 3, 4, 5]; arr[10..]", []int{}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.input, func(t *testing.T) {
+			evaluated := testEval(tt.input)
+			array, ok := evaluated.(*Array)
+			if !ok {
+				t.Fatalf("object is not Array. got=%T (%+v)", evaluated, evaluated)
+			}
+
+			if len(array.Elements) != len(tt.expected) {
+				t.Errorf("array has wrong length. expected=%d, got=%d",
+					len(tt.expected), len(array.Elements))
+				return
+			}
+
+			for i, expectedVal := range tt.expected {
+				testIntegerObject(t, array.Elements[i], int64(expectedVal))
+			}
+		})
+	}
+}
+
 func testEval(input string) Object {
 	l := lexer.New(input)
 	p := parser.New(l)
