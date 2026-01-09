@@ -587,3 +587,100 @@ func (te *TypeExpression) String() string {
 	}
 	return out.String()
 }
+
+// ModelField represents a field in a model definition.
+type ModelField struct {
+	Name *Identifier
+	Type *TypeExpression
+}
+
+func (mf *ModelField) String() string {
+	var out bytes.Buffer
+	out.WriteString(mf.Name.String())
+	out.WriteString(": ")
+	out.WriteString(mf.Type.String())
+	return out.String()
+}
+
+// ModelMethod represents a method in a model definition.
+type ModelMethod struct {
+	Name     *Identifier
+	Function *FunctionLiteral
+}
+
+func (mm *ModelMethod) String() string {
+	var out bytes.Buffer
+	out.WriteString(mm.Name.String())
+	out.WriteString(" = ")
+	out.WriteString(mm.Function.String())
+	return out.String()
+}
+
+// ModelLiteral represents a model definition.
+type ModelLiteral struct {
+	Token   token.Token // the 'model' token
+	Fields  []*ModelField
+	Methods []*ModelMethod
+}
+
+func (ml *ModelLiteral) expressionNode()      {}
+func (ml *ModelLiteral) TokenLiteral() string { return ml.Token.Literal }
+func (ml *ModelLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("model {\n")
+	for _, field := range ml.Fields {
+		out.WriteString("  ")
+		out.WriteString(field.String())
+		out.WriteString("\n")
+	}
+	for _, method := range ml.Methods {
+		out.WriteString("  ")
+		out.WriteString(method.String())
+		out.WriteString("\n")
+	}
+	out.WriteString("}")
+	return out.String()
+}
+
+// EnumValue represents a value in an enum definition.
+type EnumValue struct {
+	Name  *Identifier
+	Value Expression
+}
+
+func (ev *EnumValue) String() string {
+	var out bytes.Buffer
+	out.WriteString(ev.Name.String())
+	out.WriteString(" = ")
+	out.WriteString(ev.Value.String())
+	return out.String()
+}
+
+// EnumLiteral represents an enum definition.
+type EnumLiteral struct {
+	Token  token.Token // the 'enum' token
+	Values []*EnumValue
+}
+
+func (el *EnumLiteral) expressionNode()      {}
+func (el *EnumLiteral) TokenLiteral() string { return el.Token.Literal }
+func (el *EnumLiteral) String() string {
+	var out bytes.Buffer
+	out.WriteString("enum {\n")
+	for _, value := range el.Values {
+		out.WriteString("  ")
+		out.WriteString(value.String())
+		out.WriteString("\n")
+	}
+	out.WriteString("}")
+	return out.String()
+}
+
+// ThisExpression represents the 'this' keyword.
+type ThisExpression struct {
+	Token token.Token // the 'this' token
+}
+
+func (te *ThisExpression) expressionNode()      {}
+func (te *ThisExpression) TokenLiteral() string { return te.Token.Literal }
+func (te *ThisExpression) String() string       { return "this" }
