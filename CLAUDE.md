@@ -330,7 +330,6 @@ No partially working features currently - all implemented features are fully fun
 Features defined in `specification.md` but not yet implemented:
 
 ### Advanced Features
-- **Function overloading**: Multiple signatures with same name
 - **Type narrowing**: `is` operator checks type but doesn't affect subsequent code flow
 - **Modules**: `import` statement, module system, qualified access
 - **Standard library modules**: No `math`, `json`, `fs`, `time`, `os`, `crypto` modules
@@ -363,7 +362,7 @@ All implemented features correctly follow `specification.md`. There are no devia
 | **Primitive Types** | 100% | ✅ Complete |
 | **Operators** | 100% | ✅ Complete |
 | **Control Flow** | 100% | ✅ Complete |
-| **Functions** | 95% | ✅ Complete (no overloading) |
+| **Functions** | 100% | ✅ Complete |
 | **Collections** | 100% | ✅ Complete (full assignment & slicing) |
 | **Type System** | 90% | ✅ Enforced for var/const (not for reassignments) |
 | **Built-in Functions** | 100% | ✅ Complete |

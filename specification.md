@@ -95,31 +95,6 @@ const multiply = function (a: float, b: float) {
 }
 ```
 
-### Function Overloading
-
-Functions can have multiple signatures with different parameter types or counts:
-
-```tsl
-const greet = function (): string {
-  return "Hello!"
-}
-
-const greet = function (name: string): string {
-  return "Hello, " + name + "!"
-}
-
-const greet = function (name: string, formal: boolean): string {
-  if formal {
-    return "Good day, " + name + "."
-  }
-  return "Hey, " + name + "!"
-}
-
-greet()                     # "Hello!"
-greet("Alice")              # "Hello, Alice!"
-greet("Alice", true)        # "Good day, Alice."
-```
-
 ## Models
 
 Models are representations of complex types in TotalScript. Models are first class objects.
@@ -1035,4 +1010,3 @@ import time
 var now = time.now()        # Current timestamp
 time.sleep(1000)            # Sleep for 1000 milliseconds
 ```
-
