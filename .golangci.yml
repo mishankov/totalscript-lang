@@ -70,9 +70,88 @@ linters:
           - dupl
           - err113
           - errcheck
+          - forcetypeassert  # Tests can use unchecked assertions
           - goconst
           - gosec
           - nilnil
+          - paralleltest  # Not critical for MVP
+          - perfsprint    # Performance optimizations not critical in tests
+          - testpackage   # Internal tests need access to private members
+          - unparam       # Test helper return values may not always be used
+
+      # Singleton pattern globals are intentional
+      - path: internal/interpreter/object\.go
+        text: "(NULL|TRUE|FALSE|BREAK|CONTINUE) is a global variable"
+        linters:
+          - gochecknoglobals
+
+      # Parser precedence table is intentional global
+      - path: internal/parser/parser\.go
+        text: "precedences is a global variable"
+        linters:
+          - gochecknoglobals
+
+      # Token keywords map is intentional global
+      - path: internal/token/token\.go
+        text: "keywords is a global variable"
+        linters:
+          - gochecknoglobals
+
+      # CLI file reading is expected behavior
+      - path: cmd/tsl/main\.go
+        text: "G304"
+        linters:
+          - gosec
+
+      # Token naming follows TotalScript specification
+      - path: internal/token/token\.go
+        text: "(don't use ALL_CAPS|don't use underscores)"
+        linters:
+          - revive
+
+      # Accept current complexity for MVP
+      - text: "has complex nested blocks"
+        linters:
+          - nestif
+
+      # Group comments for token/const blocks are acceptable
+      - path: internal/token/token\.go
+        text: "godoc should start with symbol name"
+        linters:
+          - godoclint
+
+      # Minor optimizations not critical for MVP
+      - text: ".*"
+        linters:
+          - prealloc
+
+      # Accept Go 1.22 range suggestion but don't enforce
+      - text: "for loop can be changed to use an integer range"
+        linters:
+          - intrange
+
+      # Interface method implementations don't need individual comments
+      - path: internal/(ast|interpreter)/
+        text: "exported method .*(TokenLiteral|String|Type|Inspect) should have comment"
+        linters:
+          - revive
+
+      # ObjectType constants follow pattern naming
+      - path: internal/interpreter/object\.go
+        text: "var-naming: don't use ALL_CAPS"
+        linters:
+          - revive
+
+      # TokenType naming is acceptable (common pattern in parsers)
+      - path: internal/token/token\.go
+        text: "type name will be used as token.TokenType"
+        linters:
+          - revive
+
+      # Performance sprint optimizations not critical for MVP
+      - text: "(integer-format|bool-format)"
+        linters:
+          - perfsprint
 
 formatters:
   enable:

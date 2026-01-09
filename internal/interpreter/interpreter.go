@@ -101,7 +101,7 @@ func Eval(node ast.Node, env *Environment) Object {
 		if IsError(right) {
 			return right
 		}
-		return evalInfixExpression(node.Operator, left, right, env)
+		return evalInfixExpression(node.Operator, left, right)
 
 	case *ast.IfExpression:
 		return evalIfExpression(node, env)
@@ -380,7 +380,7 @@ func evalMinusPrefixOperatorExpression(right Object) Object {
 	}
 }
 
-func evalInfixExpression(operator string, left, right Object, env *Environment) Object {
+func evalInfixExpression(operator string, left, right Object) Object {
 	switch {
 	case left.Type() == INTEGER_OBJ && right.Type() == INTEGER_OBJ:
 		return evalIntegerInfixExpression(operator, left, right)
@@ -440,7 +440,7 @@ func evalAssignmentExpression(node *ast.InfixExpression, env *Environment) Objec
 		}
 
 		// Perform the operation
-		val = evalInfixExpression(op, currentVal, val, env)
+		val = evalInfixExpression(op, currentVal, val)
 		if IsError(val) {
 			return val
 		}
@@ -452,8 +452,16 @@ func evalAssignmentExpression(node *ast.InfixExpression, env *Environment) Objec
 }
 
 func evalIntegerInfixExpression(operator string, left, right Object) Object {
-	leftVal := left.(*Integer).Value
-	rightVal := right.(*Integer).Value
+	leftInt, ok := left.(*Integer)
+	if !ok {
+		return newError("type error: expected integer, got %s", left.Type())
+	}
+	rightInt, ok := right.(*Integer)
+	if !ok {
+		return newError("type error: expected integer, got %s", right.Type())
+	}
+	leftVal := leftInt.Value
+	rightVal := rightInt.Value
 
 	switch operator {
 	case "+":
@@ -548,8 +556,16 @@ func evalFloatInfixExpression(operator string, left, right Object) Object {
 }
 
 func evalStringInfixExpression(operator string, left, right Object) Object {
-	leftVal := left.(*String).Value
-	rightVal := right.(*String).Value
+	leftStr, ok := left.(*String)
+	if !ok {
+		return newError("type error: expected string, got %s", left.Type())
+	}
+	rightStr, ok := right.(*String)
+	if !ok {
+		return newError("type error: expected string, got %s", right.Type())
+	}
+	leftVal := leftStr.Value
+	rightVal := rightStr.Value
 
 	switch operator {
 	case "+":
@@ -644,16 +660,23 @@ func evalIndexExpression(left, index Object) Object {
 }
 
 func evalArrayIndexExpression(array, index Object) Object {
-	arrayObject := array.(*Array)
-	idx := index.(*Integer).Value
-	max := int64(len(arrayObject.Elements) - 1)
+	arrayObject, ok := array.(*Array)
+	if !ok {
+		return newError("type error: expected array, got %s", array.Type())
+	}
+	indexInt, ok := index.(*Integer)
+	if !ok {
+		return newError("index operator not supported: %s", index.Type())
+	}
+	idx := indexInt.Value
+	maxIdx := int64(len(arrayObject.Elements) - 1)
 
 	if idx < 0 {
 		// Negative indexing
 		idx = int64(len(arrayObject.Elements)) + idx
 	}
 
-	if idx < 0 || idx > max {
+	if idx < 0 || idx > maxIdx {
 		return NULL
 	}
 
@@ -661,8 +684,15 @@ func evalArrayIndexExpression(array, index Object) Object {
 }
 
 func evalMapIndexExpression(mapObj, index Object) Object {
-	mapObject := mapObj.(*Map)
-	key := index.(*String).Value
+	mapObject, ok := mapObj.(*Map)
+	if !ok {
+		return newError("type error: expected map, got %s", mapObj.Type())
+	}
+	keyStr, ok := index.(*String)
+	if !ok {
+		return newError("map key must be string, got %s", index.Type())
+	}
+	key := keyStr.Value
 
 	value, ok := mapObject.Pairs[key]
 	if !ok {
@@ -749,13 +779,17 @@ func objectsEqual(left, right Object) bool {
 
 	switch left := left.(type) {
 	case *Integer:
-		return left.Value == right.(*Integer).Value
+		rightInt, ok := right.(*Integer)
+		return ok && left.Value == rightInt.Value
 	case *Float:
-		return left.Value == right.(*Float).Value
+		rightFloat, ok := right.(*Float)
+		return ok && left.Value == rightFloat.Value
 	case *String:
-		return left.Value == right.(*String).Value
+		rightStr, ok := right.(*String)
+		return ok && left.Value == rightStr.Value
 	case *Boolean:
-		return left.Value == right.(*Boolean).Value
+		rightBool, ok := right.(*Boolean)
+		return ok && left.Value == rightBool.Value
 	case *Null:
 		return true
 	default:

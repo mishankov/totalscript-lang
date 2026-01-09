@@ -12,7 +12,9 @@ import (
 // ObjectType represents the type of an object.
 type ObjectType string
 
+// ObjectType constants define all runtime value types.
 const (
+	// INTEGER_OBJ represents an integer value.
 	INTEGER_OBJ      ObjectType = "INTEGER"
 	FLOAT_OBJ        ObjectType = "FLOAT"
 	STRING_OBJ       ObjectType = "STRING"

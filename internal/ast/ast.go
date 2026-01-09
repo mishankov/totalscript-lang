@@ -565,9 +565,9 @@ func (re *RangeExpression) String() string {
 type TypeExpression struct {
 	Token    token.Token
 	Name     string
-	Optional bool          // true if ends with ?
-	Union    []string      // for union types (integer | string)
-	Generic  []string      // for generic types (array<integer>)
+	Optional bool     // true if ends with ?
+	Union    []string // for union types (integer | string)
+	Generic  []string // for generic types (array<integer>)
 }
 
 func (te *TypeExpression) String() string {

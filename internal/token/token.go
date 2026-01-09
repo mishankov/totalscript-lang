@@ -25,14 +25,14 @@ const (
 	STRING  TokenType = "STRING"  // "hello"
 
 	// Operators
-	ASSIGN   TokenType = "="
-	PLUS     TokenType = "+"
-	MINUS    TokenType = "-"
-	ASTERISK TokenType = "*"
-	SLASH    TokenType = "/"
+	ASSIGN     TokenType = "="
+	PLUS       TokenType = "+"
+	MINUS      TokenType = "-"
+	ASTERISK   TokenType = "*"
+	SLASH      TokenType = "/"
 	SLASHSLASH TokenType = "//" // integer division
-	PERCENT  TokenType = "%"
-	POWER    TokenType = "**"
+	PERCENT    TokenType = "%"
+	POWER      TokenType = "**"
 
 	// Comparison operators
 	EQ     TokenType = "=="
@@ -70,9 +70,9 @@ const (
 	RBRACKET TokenType = "]"
 
 	// Type-related
-	PIPE     TokenType = "|"  // union type
-	QUESTION TokenType = "?"  // optional type
-	AT       TokenType = "@"  // annotation
+	PIPE     TokenType = "|" // union type
+	QUESTION TokenType = "?" // optional type
+	AT       TokenType = "@" // annotation
 
 	// Keywords
 	VAR         TokenType = "VAR"
