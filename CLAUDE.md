@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TotalScript is a scripting language implementation in Go with batteries included (built-in database and HTTP server). The project implements a complete interpreter following the classic compiler architecture pattern.
+TotalScript is a scripting language implementation in Go with batteries included (database and HTTP server modules). The project implements a complete interpreter following the classic compiler architecture pattern.
 
 **Current Status**: Phases 1-9 complete! Core language with models, enums, type enforcement, collections, and modules with full stdlib (~90% of specification implemented).
 
@@ -86,12 +86,11 @@ internal/
 ├── ast/            # AST node types and interfaces
 ├── parser/         # Recursive descent parser (tokens → AST)
 ├── interpreter/    # Tree-walking interpreter (AST → execution)
-│   ├── object.go       # Runtime value types (Integer, String, Function, etc.)
+│   ├── object.go       # Runtime value types (Integer, String, Function, Module, etc.)
 │   ├── environment.go  # Variable scoping (lexical environments)
-│   └── interpreter.go  # Eval() function and expression evaluation
-├── stdlib/         # Built-in functions (future)
-├── database/       # SQLite integration (future)
-└── http/           # HTTP server/client (future)
+│   ├── interpreter.go  # Eval() function and expression evaluation
+│   └── module.go       # Module loading and stdlib (math, json, fs, time, os, db, http)
+└── stdlib/         # Built-in functions (println, typeof, conversions)
 
 cmd/
 ├── tsl/            # CLI interpreter binary
@@ -347,8 +346,8 @@ Features defined in `specification.md` but not yet implemented:
 ### Advanced Features
 - **Type narrowing**: `is` operator checks type but doesn't affect subsequent code flow
 - **Crypto module**: Hash functions and encryption utilities not yet implemented
-- **Database**: No `db` object, no SQLite integration, no persistence
-- **HTTP**: No `server` or `client` objects, no Request/Response types
+- **Database module**: No `db` module implementation, no SQLite integration, no persistence
+- **HTTP module**: No `http` module implementation (http.server and http.client), no Request/Response types
 
 ## Known Limitations
 
@@ -356,8 +355,8 @@ Current implementation limitations to be aware of:
 
 ### Missing Features
 1. **Crypto module**: Hash functions and encryption not yet implemented
-2. **No database integration**: No built-in SQLite support
-3. **No HTTP support**: No built-in HTTP server or client
+2. **Database module**: No `db` module implementation, no SQLite support
+3. **HTTP module**: No `http` module implementation with server and client functionality
 
 ## Specification Compliance
 
@@ -440,26 +439,34 @@ Optional remaining feature (not critical):
 Module to implement:
 - `crypto` - hash functions (sha256, md5, etc.)
 
-### Phase 10: Database Integration
-**Priority**: LOW - Advanced feature
+### Phase 10: Database Module
+**Priority**: MEDIUM - Advanced feature
+
+The `db` module provides SQLite integration through `import "db"`.
 
 Features:
-1. SQLite wrapper in `internal/database/`
-2. Global `db` object
-3. Model persistence: `db.save()`, `db.find()`, `db.delete()`
-4. Query builder with pattern matching
-5. Transactions
+1. SQLite wrapper in `internal/interpreter/module.go` (createDBModule)
+2. Module exports: `db.save()`, `db.find()`, `db.delete()`, `db.saveAll()`, `db.deleteAll()`, `db.configure()`, `db.transaction()`
+3. Model persistence with automatic table creation
+4. Query builder with pattern matching syntax
+5. Transaction support
+6. CLI argument: `--db=myapp.db` to specify database file
 
-### Phase 11: HTTP Server & Client
-**Priority**: LOW - Advanced feature
+### Phase 11: HTTP Module
+**Priority**: MEDIUM - Advanced feature
+
+The `http` module provides HTTP server and client through `import "http"`.
 
 Features:
-1. HTTP server in `internal/http/server.go`
-2. HTTP client in `internal/http/client.go`
-3. Request/Response models
-4. Route handlers: `server.get()`, `server.post()`, etc.
-5. Middleware support
-6. Static file serving
+1. HTTP server and client in `internal/interpreter/module.go` (createHTTPModule)
+2. Module exports:
+   - `http.server` - Server object with `.get()`, `.post()`, `.put()`, `.delete()`, `.start()`, `.static()`, `.use()`
+   - `http.client` - Client object with `.get()`, `.post()`, `.put()`, `.patch()`, `.delete()`
+   - `http.Request` - Request model type
+   - `http.Response` - Response constructor function
+3. Route handlers with path parameters (`:id`)
+4. Middleware support
+5. Static file serving
 
 ### Recommended Implementation Order
 
@@ -490,8 +497,11 @@ Based on dependencies and impact:
    - Model field assignment: `obj.field = value`, compound operators
    - Array slicing: `arr[1..3]`, `arr[2..]`, `arr[..3]`, `arr[..]`
    - Negative index slicing: `arr[-3..-1]`, `arr[-3..]`, `arr[..-3]`
-6. **Phase 9**: Modules and imports
-7. **Phase 10**: Database integration
-8. **Phase 11**: HTTP server and client
+6. ✅ **Phase 9**: Modules and Standard Library - COMPLETE
+   - Import statement parsing (`import "math"`, `import "./file" as alias`)
+   - Module loading and caching
+   - Standard library modules: math, json, fs, time, os
+7. **Phase 10**: Database module (`import "db"`)
+8. **Phase 11**: HTTP module (`import "http"`)
 
-**Current Status**: Core language complete (Phases 1-8). Ready for modules and advanced features.
+**Current Status**: Core language with modules complete (Phases 1-9). Ready for database and HTTP modules.

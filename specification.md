@@ -502,9 +502,17 @@ s.substring(0, 5)           # "Hello"
 
 ## Database
 
-TotalScript includes built-in SQLite database support. Every model can be persisted to its own table.
+TotalScript includes built-in SQLite database support through the `db` module. Every model can be persisted to its own table.
 
-The `db` object is globally available. The database file is created automatically (default: `data.db`) or can be specified via CLI argument `--db=myapp.db`.
+```tsl
+import "db"
+```
+
+The database file is created automatically (default: `data.db`) or can be specified via CLI argument `--db=myapp.db`. You can also configure it programmatically:
+
+```tsl
+db.configure("myapp.db")    # Set database file path
+```
 
 ### Model Annotations
 
@@ -654,49 +662,62 @@ db.transaction {
 
 ## HTTP
 
-TotalScript provides built-in HTTP server and client via global `server` and `client` objects.
+TotalScript provides built-in HTTP server and client through the `http` module.
+
+```tsl
+import "http"
+```
+
+The module exports:
+- `http.server` - HTTP server object for defining routes and starting the server
+- `http.client` - HTTP client object for making requests
+- `http.Request` - Request model type
+- `http.Response` - Response constructor function
 
 ### HTTP Server
 
 #### Defining Routes
 
 ```tsl
-server.get("/", function(req: Request): Response {
-  return Response(200, "Hello, World!")
+import "http"
+import "db"
+
+http.server.get("/", function(req: http.Request): http.Response {
+  return http.Response(200, "Hello, World!")
 })
 
-server.get("/users", function(req: Request): Response {
+http.server.get("/users", function(req: http.Request): http.Response {
   var users = db.find(User) {}
-  return Response(200, users)    # Auto-converts to JSON
+  return http.Response(200, users)    # Auto-converts to JSON
 })
 
-server.post("/users", function(req: Request): Response {
+http.server.post("/users", function(req: http.Request): http.Response {
   var data = req.json()
   if data is Error {
-    return Response(400, {"error": data.message})
+    return http.Response(400, {"error": data.message})
   }
   var user = User(data["email"], data["name"], data["age"])
   db.save(user)
-  return Response(201, user)
+  return http.Response(201, user)
 })
 
-server.put("/users/:id", function(req: Request): Response {
+http.server.put("/users/:id", function(req: http.Request): http.Response {
   var id = req.params["id"]
   # ...
-  return Response(200, user)
+  return http.Response(200, user)
 })
 
-server.delete("/users/:id", function(req: Request): Response {
+http.server.delete("/users/:id", function(req: http.Request): http.Response {
   var id = req.params["id"]
   db.find(User) { this.email == id } delete
-  return Response(204)
+  return http.Response(204)
 })
 ```
 
 #### Starting the Server
 
 ```tsl
-server.start(8080)              # Blocks and listens on port 8080
+http.server.start(8080)              # Blocks and listens on port 8080
 ```
 
 #### Request Object
@@ -719,26 +740,28 @@ req.headers["Accept"][0]        # "application/json"
 #### Response Object
 
 ```tsl
-Response(status)                          # Response with status only
-Response(status, body)                    # Response with body (string or model)
-Response(status, body, headers)           # Response with custom headers
+http.Response(status)                          # Response with status only
+http.Response(status, body)                    # Response with body (string or model)
+http.Response(status, body, headers)           # Response with custom headers
 
 # Examples
-Response(200, "OK")
-Response(200, {"message": "success"})     # Map auto-converts to JSON
-Response(200, user)                       # Model auto-converts to JSON
-Response(301, "", {"Location": ["/new-path"]})
+http.Response(200, "OK")
+http.Response(200, {"message": "success"})     # Map auto-converts to JSON
+http.Response(200, user)                       # Model auto-converts to JSON
+http.Response(301, "", {"Location": ["/new-path"]})
 ```
 
 ### HTTP Client
 
 #### Making Requests
 
-All client methods return `Response | Error` (network errors return Error).
+All client methods return `http.Response | Error` (network errors return Error).
 
 ```tsl
+import "http"
+
 # GET request
-var res = client.get("https://api.example.com/users")
+var res = http.client.get("https://api.example.com/users")
 if res is Error {
   println("Network error:", res.message)
   return
@@ -746,25 +769,25 @@ if res is Error {
 println(res.status)   # 200
 
 # POST request with JSON body
-var res = client.post("https://api.example.com/users", {
+var res = http.client.post("https://api.example.com/users", {
   "name": "Alice",
   "email": "alice@example.com"
 })
 
 # Other methods
-var res = client.put(url, body)
-var res = client.patch(url, body)
-var res = client.delete(url)
+var res = http.client.put(url, body)
+var res = http.client.patch(url, body)
+var res = http.client.delete(url)
 ```
 
 #### Request with Headers
 
 ```tsl
-var res = client.get("https://api.example.com/users", {
+var res = http.client.get("https://api.example.com/users", {
   "Authorization": ["Bearer token123"]
 })
 
-var res = client.post(url, body, {
+var res = http.client.post(url, body, {
   "Content-Type": ["application/json"],
   "Authorization": ["Bearer token123"]
 })
@@ -783,14 +806,18 @@ res.ok                          # true if status is 2xx
 ### Static Files
 
 ```tsl
-server.static("/assets", "./public")    # Serve ./public at /assets
-server.static("/", "./dist")            # Serve ./dist at root
+import "http"
+
+http.server.static("/assets", "./public")    # Serve ./public at /assets
+http.server.static("/", "./dist")            # Serve ./dist at root
 ```
 
 ### Middleware
 
 ```tsl
-server.use(function(req: Request, next: function): Response {
+import "http"
+
+http.server.use(function(req: http.Request, next: function): http.Response {
   println("Request:", req.method, req.path)
   var res = next(req)
   println("Response:", res.status)
