@@ -92,19 +92,21 @@ func (l *Lexer) NextToken() token.Token {
 			tok = l.newToken(token.MINUS, l.ch)
 		}
 	case '*':
-		if l.peekChar() == '*' {
+		switch l.peekChar() {
+		case '*':
 			tok = l.makeTwoCharToken(token.POWER)
-		} else if l.peekChar() == '=' {
+		case '=':
 			tok = l.makeTwoCharToken(token.ASTERISK_ASSIGN)
-		} else {
+		default:
 			tok = l.newToken(token.ASTERISK, l.ch)
 		}
 	case '/':
-		if l.peekChar() == '/' {
+		switch l.peekChar() {
+		case '/':
 			tok = l.makeTwoCharToken(token.SLASHSLASH)
-		} else if l.peekChar() == '=' {
+		case '=':
 			tok = l.makeTwoCharToken(token.SLASH_ASSIGN)
-		} else {
+		default:
 			tok = l.newToken(token.SLASH, l.ch)
 		}
 	case '%':
@@ -321,10 +323,7 @@ func (l *Lexer) skipComment() {
 		l.readChar() // skip third #
 
 		// Read until closing ###
-		for {
-			if l.ch == 0 {
-				break
-			}
+		for l.ch != 0 {
 			if l.ch == '#' && l.peekChar() == '#' && l.peekCharN(2) == '#' {
 				l.readChar() // skip first #
 				l.readChar() // skip second #

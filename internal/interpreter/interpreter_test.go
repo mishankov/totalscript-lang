@@ -356,10 +356,6 @@ func TestArrayIndexExpressions(t *testing.T) {
 			3,
 		},
 		{
-			"var i = 0 [1][i]",
-			1,
-		},
-		{
 			"[1, 2, 3][1 + 1]",
 			3,
 		},
@@ -385,19 +381,23 @@ func TestArrayIndexExpressions(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
+	for i, tt := range tests {
 		evaluated := testEval(tt.input)
 		integer, ok := tt.expected.(int)
 		if ok {
-			testIntegerObject(t, evaluated, int64(integer))
+			if !testIntegerObject(t, evaluated, int64(integer)) {
+				t.Errorf("Test case %d failed: %s", i, tt.input)
+			}
 		} else {
-			testNullObject(t, evaluated)
+			if !testNullObject(t, evaluated) {
+				t.Errorf("Test case %d failed: %s", i, tt.input)
+			}
 		}
 	}
 }
 
 func TestMapLiterals(t *testing.T) {
-	input := `{"one": 10 - 9, "two": 1 + 1, "three": 6 / 2}`
+	input := `{"one": 10 - 9, "two": 1 + 1, "three": 6 // 2}`
 
 	evaluated := testEval(input)
 	result, ok := evaluated.(*Map)

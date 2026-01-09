@@ -215,6 +215,24 @@ See `DEVELOPMENT.md` for detailed coding standards. Key points:
 - **Testing**: Table-driven tests preferred, use `t.Helper()` in test utilities
 - **Commit messages**: Follow conventional commits (feat, fix, refactor, test, docs)
 
+## Pre-Commit Checklist
+
+**CRITICAL**: Always run tests and linter before committing code. Never commit code that doesn't pass these checks.
+
+```bash
+# Run both tests and linter (recommended)
+task check
+
+# Or run individually:
+go test ./...           # All tests must pass
+golangci-lint run ./... # No errors allowed
+```
+
+If tests fail or linter reports errors, fix them before committing. This ensures:
+- No broken functionality is committed
+- Code quality standards are maintained
+- Other developers don't encounter issues when pulling changes
+
 ## Known Limitations
 
 Current implementation limitations to be aware of:

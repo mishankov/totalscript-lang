@@ -87,6 +87,12 @@ func Eval(node ast.Node, env *Environment) Object {
 		return evalPrefixExpression(node.Operator, right)
 
 	case *ast.InfixExpression:
+		// Handle assignment operators specially - don't evaluate left side
+		if node.Operator == "=" || node.Operator == "+=" || node.Operator == "-=" ||
+			node.Operator == "*=" || node.Operator == "/=" || node.Operator == "%=" {
+			return evalAssignmentExpression(node, env)
+		}
+
 		left := Eval(node.Left, env)
 		if IsError(left) {
 			return left
@@ -376,18 +382,6 @@ func evalMinusPrefixOperatorExpression(right Object) Object {
 
 func evalInfixExpression(operator string, left, right Object, env *Environment) Object {
 	switch {
-	case operator == "=":
-		return evalAssignment(left, right, env)
-	case operator == "+=":
-		return evalCompoundAssignment(left, right, env, "+")
-	case operator == "-=":
-		return evalCompoundAssignment(left, right, env, "-")
-	case operator == "*=":
-		return evalCompoundAssignment(left, right, env, "*")
-	case operator == "/=":
-		return evalCompoundAssignment(left, right, env, "/")
-	case operator == "%=":
-		return evalCompoundAssignment(left, right, env, "%")
 	case left.Type() == INTEGER_OBJ && right.Type() == INTEGER_OBJ:
 		return evalIntegerInfixExpression(operator, left, right)
 	case left.Type() == FLOAT_OBJ || right.Type() == FLOAT_OBJ:
@@ -409,20 +403,52 @@ func evalInfixExpression(operator string, left, right Object, env *Environment) 
 	}
 }
 
-func evalAssignment(left, right Object, env *Environment) Object {
-	// Assignment should only work on identifiers
-	// This is a limitation of the current implementation
-	// In a real implementation, we'd need to track the AST node
-	// For now, we just set the value
-	return right
-}
-
-func evalCompoundAssignment(left, right Object, env *Environment, op string) Object {
-	result := evalInfixExpression(op, left, right, env)
-	if IsError(result) {
-		return result
+func evalAssignmentExpression(node *ast.InfixExpression, env *Environment) Object {
+	// Get the identifier name from the left side
+	ident, ok := node.Left.(*ast.Identifier)
+	if !ok {
+		return newError("cannot assign to %T", node.Left)
 	}
-	return result
+
+	// Evaluate the right side
+	val := Eval(node.Right, env)
+	if IsError(val) {
+		return val
+	}
+
+	// Handle compound assignment operators
+	if node.Operator != "=" {
+		// Get current value
+		currentVal, ok := env.Get(ident.Value)
+		if !ok {
+			return newError("identifier not found: %s", ident.Value)
+		}
+
+		// Determine the arithmetic operator
+		var op string
+		switch node.Operator {
+		case "+=":
+			op = "+"
+		case "-=":
+			op = "-"
+		case "*=":
+			op = "*"
+		case "/=":
+			op = "/"
+		case "%=":
+			op = "%"
+		}
+
+		// Perform the operation
+		val = evalInfixExpression(op, currentVal, val, env)
+		if IsError(val) {
+			return val
+		}
+	}
+
+	// Set the variable
+	env.Set(ident.Value, val)
+	return val
 }
 
 func evalIntegerInfixExpression(operator string, left, right Object) Object {

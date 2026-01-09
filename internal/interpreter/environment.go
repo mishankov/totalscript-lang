@@ -29,7 +29,23 @@ func (e *Environment) Get(name string) (Object, bool) {
 }
 
 // Set sets a value in the environment.
+// If the variable exists in an outer scope, it updates that variable.
+// Otherwise, it creates a new variable in the current scope.
 func (e *Environment) Set(name string, val Object) Object {
+	// Check if variable exists in current scope
+	if _, ok := e.store[name]; ok {
+		e.store[name] = val
+		return val
+	}
+
+	// Check if variable exists in outer scopes
+	if e.outer != nil {
+		if _, ok := e.outer.Get(name); ok {
+			return e.outer.Set(name, val)
+		}
+	}
+
+	// Variable doesn't exist anywhere, create it in current scope
 	e.store[name] = val
 	return val
 }
