@@ -334,12 +334,14 @@ The following features from `specification.md` are fully implemented and tested:
 - **fs**: File system operations (readFile, writeFile, exists, listDir)
 - **time**: Time operations (now, sleep) - timestamps in milliseconds
 - **os**: Operating system utilities (env, args) - environment variables and command-line arguments
-- **http**: HTTP server and client
+- **http**: HTTP server and client (100% spec-compliant)
   - Server: `http.Server()` instantiable constructor with methods (get, post, put, patch, delete, start, static, use)
   - Client: `http.client` with methods (get, post, put, patch, delete)
   - Request object: method, path, params, query, headers, body, json()
   - Response constructor: `http.Response(status, body?, headers?)`
   - Path parameters: `/users/:id` syntax with parameter extraction
+  - Middleware chain: `server.use(function(req, next) {...})` with full next() support
+  - Static file serving: `server.static("/path", "./directory")` fully functional
   - Automatic JSON serialization for objects
   - All HTTP methods supported including PATCH
 
