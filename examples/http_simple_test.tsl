@@ -1,0 +1,24 @@
+# Simple HTTP Module Test
+import "http"
+
+println("Testing HTTP module import...")
+println("✓ Module imported successfully")
+println()
+
+println("Testing Response constructor...")
+var res = http.Response(200, "Hello, World!")
+println("✓ Response created")
+println("  Status:", res["status"])
+println("  Body:", res["body"])
+println("  OK:", res["ok"])
+println()
+
+println("Testing Response with all parameters...")
+var fullRes = http.Response(404, "Not Found", {"Content-Type": ["text/html"]})
+println("✓ Full response created")
+println("  Status:", fullRes["status"])
+println("  Body:", fullRes["body"])
+println("  OK:", fullRes["ok"])
+println()
+
+println("All basic tests passed! ✓")

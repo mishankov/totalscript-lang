@@ -1,9 +1,12 @@
 package interpreter
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -63,6 +66,8 @@ func loadStdlibModule(name string) Object {
 		module = createTimeModule()
 	case "os":
 		module = createOSModule()
+	case "http":
+		module = createHTTPModule()
 	default:
 		return newError("unknown stdlib module: %s", name)
 	}
@@ -872,5 +877,664 @@ func createOSModule() *Module {
 	return &Module{
 		Name:  "os",
 		Scope: env,
+	}
+}
+
+// createHTTPModule creates the http standard library module.
+// Provides HTTP server and client capabilities.
+//
+//nolint:gochecknoglobals,funlen,gocognit,gocyclo
+func createHTTPModule() *Module {
+	env := NewEnvironment()
+
+	// http.Response(status, body?, headers?) - Response constructor
+	env.Set("Response", createResponseConstructor())
+
+	// http.client - Client object with HTTP methods
+	env.Set("client", createClientObject())
+
+	// http.Server() - Server constructor
+	env.Set("Server", createServerConstructor())
+
+	return &Module{
+		Name:  "http",
+		Scope: env,
+	}
+}
+
+// httpServerState holds the internal state for an HTTP server instance.
+type httpServerState struct {
+	routes      map[string]map[string]Object // method -> path -> handler
+	middleware  []Object                     // middleware functions
+	staticPaths map[string]string            // route -> filesystem path
+}
+
+// createResponseConstructor creates the Response constructor function.
+// Response(status)
+// Response(status, body)
+// Response(status, body, headers)
+func createResponseConstructor() *Builtin {
+	return &Builtin{
+		Name: "Response",
+		Fn: func(args ...Object) Object {
+			if len(args) < 1 || len(args) > 3 {
+				return newError("Response() takes 1-3 arguments, got %d", len(args))
+			}
+
+			// Get status (required)
+			status, ok := args[0].(*Integer)
+			if !ok {
+				return newError("Response() status must be integer, got %s", args[0].Type())
+			}
+
+			// Create response map
+			response := &Map{Pairs: make(map[string]Object)}
+			response.Pairs["status"] = status
+			response.Pairs["ok"] = &Boolean{Value: status.Value >= 200 && status.Value < 300}
+
+			// Get body (optional)
+			if len(args) >= 2 {
+				response.Pairs["body"] = args[1]
+			} else {
+				response.Pairs["body"] = &String{Value: ""}
+			}
+
+			// Get headers (optional)
+			if len(args) >= 3 {
+				headersMap, ok := args[2].(*Map)
+				if !ok {
+					return newError("Response() headers must be map, got %s", args[2].Type())
+				}
+				response.Pairs["headers"] = headersMap
+			} else {
+				response.Pairs["headers"] = &Map{Pairs: make(map[string]Object)}
+			}
+
+			// Add json() method to parse body as JSON
+			response.Pairs["json"] = &Builtin{
+				Name: "json",
+				Fn: func(methodArgs ...Object) Object {
+					if len(methodArgs) != 0 {
+						return newError("json() takes no arguments")
+					}
+
+					body := response.Pairs["body"]
+					bodyStr, ok := body.(*String)
+					if !ok {
+						return newError("cannot parse non-string body as JSON")
+					}
+
+					var data interface{}
+					if err := json.Unmarshal([]byte(bodyStr.Value), &data); err != nil {
+						return &Error{Message: "invalid JSON: " + err.Error()}
+					}
+
+					return convertJSONToObject(data)
+				},
+			}
+
+			return response
+		},
+	}
+}
+
+// createClientObject creates the http.client object with HTTP methods.
+//
+//nolint:iface
+func createClientObject() Object {
+	client := &Map{Pairs: make(map[string]Object)}
+
+	client.Pairs["get"] = createClientMethod("GET")
+	client.Pairs["post"] = createClientMethod("POST")
+	client.Pairs["put"] = createClientMethod("PUT")
+	client.Pairs["patch"] = createClientMethod("PATCH")
+	client.Pairs["delete"] = createClientMethod("DELETE")
+
+	return client
+}
+
+// createClientMethod creates an HTTP client method for the given HTTP verb.
+// GET/DELETE: (url, headers?)
+// POST/PUT/PATCH: (url, body, headers?)
+//
+//nolint:gocognit,funlen
+func createClientMethod(method string) *Builtin {
+	return &Builtin{
+		Name: strings.ToLower(method),
+		Fn: func(args ...Object) Object {
+			var url string
+			var body Object
+			var headers *Map
+
+			// Parse arguments based on method
+			if method == "GET" || method == "DELETE" {
+				// GET/DELETE: url, headers?
+				if len(args) < 1 || len(args) > 2 {
+					return newError("%s() takes 1-2 arguments, got %d", method, len(args))
+				}
+
+				urlObj, ok := args[0].(*String)
+				if !ok {
+					return newError("%s() url must be string, got %s", method, args[0].Type())
+				}
+				url = urlObj.Value
+
+				if len(args) == 2 {
+					var ok bool
+					headers, ok = args[1].(*Map)
+					if !ok {
+						return newError("%s() headers must be map, got %s", method, args[1].Type())
+					}
+				}
+			} else {
+				// POST/PUT/PATCH: url, body, headers?
+				if len(args) < 2 || len(args) > 3 {
+					return newError("%s() takes 2-3 arguments, got %d", method, len(args))
+				}
+
+				urlObj, ok := args[0].(*String)
+				if !ok {
+					return newError("%s() url must be string, got %s", method, args[0].Type())
+				}
+				url = urlObj.Value
+
+				body = args[1]
+
+				if len(args) == 3 {
+					var ok bool
+					headers, ok = args[2].(*Map)
+					if !ok {
+						return newError("%s() headers must be map, got %s", method, args[2].Type())
+					}
+				}
+			}
+
+			// Build HTTP request
+			var reqBody io.Reader
+			if body != nil {
+				// Convert body to JSON if it's not a string
+				if str, ok := body.(*String); ok {
+					reqBody = strings.NewReader(str.Value)
+				} else {
+					// Convert object to JSON
+					goValue := convertObjectToGo(body)
+					jsonBytes, err := json.Marshal(goValue)
+					if err != nil {
+						return &Error{Message: "failed to marshal body: " + err.Error()}
+					}
+					reqBody = bytes.NewReader(jsonBytes)
+				}
+			}
+
+			//nolint:noctx
+			req, err := http.NewRequest(method, url, reqBody)
+			if err != nil {
+				return &Error{Message: "failed to create request: " + err.Error()}
+			}
+
+			// Set headers
+			if headers != nil {
+				for key, value := range headers.Pairs {
+					if arr, ok := value.(*Array); ok {
+						// Headers are arrays of strings
+						for _, elem := range arr.Elements {
+							if str, ok := elem.(*String); ok {
+								req.Header.Add(key, str.Value)
+							}
+						}
+					} else if str, ok := value.(*String); ok {
+						req.Header.Set(key, str.Value)
+					}
+				}
+			}
+
+			// Execute request
+			httpClient := &http.Client{Timeout: 30 * time.Second}
+			resp, err := httpClient.Do(req)
+			if err != nil {
+				return &Error{Message: err.Error()}
+			}
+			//nolint:errcheck
+			defer resp.Body.Close()
+
+			// Read response body
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return &Error{Message: "failed to read response: " + err.Error()}
+			}
+
+			// Convert headers to TotalScript map
+			responseHeaders := &Map{Pairs: make(map[string]Object)}
+			for key, values := range resp.Header {
+				elements := make([]Object, len(values))
+				for i, v := range values {
+					elements[i] = &String{Value: v}
+				}
+				responseHeaders.Pairs[key] = &Array{Elements: elements}
+			}
+
+			// Create response object
+			response := &Map{Pairs: make(map[string]Object)}
+			response.Pairs["status"] = &Integer{Value: int64(resp.StatusCode)}
+			response.Pairs["body"] = &String{Value: string(bodyBytes)}
+			response.Pairs["headers"] = responseHeaders
+			response.Pairs["ok"] = &Boolean{Value: resp.StatusCode >= 200 && resp.StatusCode < 300}
+
+			// Add json() method
+			response.Pairs["json"] = &Builtin{
+				Name: "json",
+				Fn: func(methodArgs ...Object) Object {
+					if len(methodArgs) != 0 {
+						return newError("json() takes no arguments")
+					}
+
+					var data interface{}
+					if err := json.Unmarshal(bodyBytes, &data); err != nil {
+						return &Error{Message: "invalid JSON: " + err.Error()}
+					}
+
+					return convertJSONToObject(data)
+				},
+			}
+
+			return response
+		},
+	}
+}
+
+// createServerConstructor creates the Server() constructor function.
+//
+//nolint:funlen
+func createServerConstructor() *Builtin {
+	return &Builtin{
+		Name: "Server",
+		Fn: func(args ...Object) Object {
+			if len(args) != 0 {
+				return newError("Server() takes no arguments")
+			}
+
+			// Create server state
+			state := &httpServerState{
+				routes:      make(map[string]map[string]Object),
+				middleware:  []Object{},
+				staticPaths: make(map[string]string),
+			}
+
+			// Create server instance (Map object)
+			serverInstance := &Map{Pairs: make(map[string]Object)}
+
+			// Add route registration methods
+			serverInstance.Pairs["get"] = createRouteMethod(state, "GET")
+			serverInstance.Pairs["post"] = createRouteMethod(state, "POST")
+			serverInstance.Pairs["put"] = createRouteMethod(state, "PUT")
+			serverInstance.Pairs["patch"] = createRouteMethod(state, "PATCH")
+			serverInstance.Pairs["delete"] = createRouteMethod(state, "DELETE")
+
+			// Add server control methods
+			serverInstance.Pairs["start"] = createStartMethod(state)
+			serverInstance.Pairs["static"] = createStaticMethod(state)
+			serverInstance.Pairs["use"] = createUseMethod(state)
+
+			return serverInstance
+		},
+	}
+}
+
+// createRouteMethod creates a route registration method (get, post, put, patch, delete).
+func createRouteMethod(state *httpServerState, method string) *Builtin {
+	return &Builtin{
+		Name: strings.ToLower(method),
+		Fn: func(args ...Object) Object {
+			if len(args) != 2 {
+				return newError("%s() requires 2 arguments (path, handler), got %d", method, len(args))
+			}
+
+			path, ok := args[0].(*String)
+			if !ok {
+				return newError("%s() path must be string, got %s", method, args[0].Type())
+			}
+
+			handler, ok := args[1].(*Function)
+			if !ok {
+				return newError("%s() handler must be function, got %s", method, args[1].Type())
+			}
+
+			// Store route
+			if state.routes[method] == nil {
+				state.routes[method] = make(map[string]Object)
+			}
+			state.routes[method][path.Value] = handler
+
+			return NULL
+		},
+	}
+}
+
+// createStartMethod creates the start() method for the server.
+//
+//nolint:funlen,gocognit,gocyclo
+func createStartMethod(state *httpServerState) *Builtin {
+	return &Builtin{
+		Name: "start",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("start() requires 1 argument (port)")
+			}
+
+			port, ok := args[0].(*Integer)
+			if !ok {
+				return newError("start() port must be integer, got %s", args[0].Type())
+			}
+
+			// Create HTTP server
+			mux := http.NewServeMux()
+
+			// Handle all requests
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				// Find matching route
+				handler, params := matchRoute(state, r.Method, r.URL.Path)
+				if handler == nil {
+					w.WriteHeader(http.StatusNotFound)
+					//nolint:errcheck,gosec
+					w.Write([]byte("404 Not Found"))
+					return
+				}
+
+				// Create request object
+				requestObj := createRequestObject(r, params)
+
+				// Call handler function
+				result := callTSFunction(handler, requestObj)
+
+				// Handle errors
+				if err, ok := result.(*Error); ok {
+					w.WriteHeader(http.StatusInternalServerError)
+					//nolint:errcheck,gosec
+					w.Write([]byte(err.Message))
+					return
+				}
+
+				// Convert response to HTTP response
+				writeHTTPResponse(w, result)
+			})
+
+			// Serve static files
+			for routePath, fsPath := range state.staticPaths {
+				fs := http.FileServer(http.Dir(fsPath))
+				mux.Handle(routePath, http.StripPrefix(routePath, fs))
+			}
+
+			// Start server (blocking)
+			addr := fmt.Sprintf(":%d", port.Value)
+			fmt.Printf("Server listening on http://localhost%s\n", addr)
+
+			//nolint:gosec
+			if err := http.ListenAndServe(addr, mux); err != nil {
+				return newError("server error: %s", err.Error())
+			}
+
+			return NULL
+		},
+	}
+}
+
+// createStaticMethod creates the static() method for serving static files.
+func createStaticMethod(state *httpServerState) *Builtin {
+	return &Builtin{
+		Name: "static",
+		Fn: func(args ...Object) Object {
+			if len(args) != 2 {
+				return newError("static() requires 2 arguments (routePath, filesystemPath)")
+			}
+
+			routePath, ok := args[0].(*String)
+			if !ok {
+				return newError("static() routePath must be string, got %s", args[0].Type())
+			}
+
+			fsPath, ok := args[1].(*String)
+			if !ok {
+				return newError("static() filesystemPath must be string, got %s", args[1].Type())
+			}
+
+			state.staticPaths[routePath.Value] = fsPath.Value
+			return NULL
+		},
+	}
+}
+
+// createUseMethod creates the use() method for middleware.
+func createUseMethod(state *httpServerState) *Builtin {
+	return &Builtin{
+		Name: "use",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("use() requires 1 argument (middleware function)")
+			}
+
+			middleware, ok := args[0].(*Function)
+			if !ok {
+				return newError("use() middleware must be function, got %s", args[0].Type())
+			}
+
+			state.middleware = append(state.middleware, middleware)
+			return NULL
+		},
+	}
+}
+
+// matchRoute finds a matching route and extracts path parameters.
+// Returns (handler, params) or (nil, nil) if no match.
+func matchRoute(state *httpServerState, method, path string) (Object, map[string]string) {
+	methodRoutes, ok := state.routes[method]
+	if !ok {
+		return nil, nil
+	}
+
+	// Try exact match first
+	if handler, ok := methodRoutes[path]; ok {
+		return handler, make(map[string]string)
+	}
+
+	// Try pattern matching with parameters
+	for pattern, handler := range methodRoutes {
+		if matched, params := matchPattern(pattern, path); matched {
+			return handler, params
+		}
+	}
+
+	return nil, nil
+}
+
+// matchPattern matches a path against a pattern and extracts parameters.
+// Pattern: /users/:id/posts/:postId
+// Path: /users/123/posts/456
+// Returns: (true, {"id": "123", "postId": "456"})
+func matchPattern(pattern, path string) (bool, map[string]string) {
+	patternParts := strings.Split(strings.Trim(pattern, "/"), "/")
+	pathParts := strings.Split(strings.Trim(path, "/"), "/")
+
+	if len(patternParts) != len(pathParts) {
+		return false, nil
+	}
+
+	params := make(map[string]string)
+
+	for i, patternPart := range patternParts {
+		if strings.HasPrefix(patternPart, ":") {
+			// Parameter
+			paramName := patternPart[1:]
+			params[paramName] = pathParts[i]
+		} else if patternPart != pathParts[i] {
+			// Literal mismatch
+			return false, nil
+		}
+	}
+
+	return true, params
+}
+
+// createRequestObject creates a TotalScript Request object from an HTTP request.
+//
+//nolint:funlen,iface
+func createRequestObject(r *http.Request, params map[string]string) Object {
+	// Read body
+	bodyBytes, _ := io.ReadAll(r.Body)
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes)) // Restore body
+
+	// Convert params to map
+	paramsMap := &Map{Pairs: make(map[string]Object)}
+	for k, v := range params {
+		paramsMap.Pairs[k] = &String{Value: v}
+	}
+
+	// Convert query parameters to map of arrays
+	queryMap := &Map{Pairs: make(map[string]Object)}
+	for key, values := range r.URL.Query() {
+		elements := make([]Object, len(values))
+		for i, v := range values {
+			elements[i] = &String{Value: v}
+		}
+		queryMap.Pairs[key] = &Array{Elements: elements}
+	}
+
+	// Convert headers to map of arrays
+	headersMap := &Map{Pairs: make(map[string]Object)}
+	for key, values := range r.Header {
+		elements := make([]Object, len(values))
+		for i, v := range values {
+			elements[i] = &String{Value: v}
+		}
+		headersMap.Pairs[key] = &Array{Elements: elements}
+	}
+
+	// Create request object
+	request := &Map{Pairs: make(map[string]Object)}
+	request.Pairs["method"] = &String{Value: r.Method}
+	request.Pairs["path"] = &String{Value: r.URL.Path}
+	request.Pairs["params"] = paramsMap
+	request.Pairs["query"] = queryMap
+	request.Pairs["headers"] = headersMap
+	request.Pairs["body"] = &String{Value: string(bodyBytes)}
+
+	// Add json() method
+	request.Pairs["json"] = &Builtin{
+		Name: "json",
+		Fn: func(args ...Object) Object {
+			if len(args) != 0 {
+				return newError("json() takes no arguments")
+			}
+
+			var data interface{}
+			if err := json.Unmarshal(bodyBytes, &data); err != nil {
+				return &Error{Message: "invalid JSON: " + err.Error()}
+			}
+
+			return convertJSONToObject(data)
+		},
+	}
+
+	return request
+}
+
+// callTSFunction calls a TotalScript function with arguments.
+func callTSFunction(fn Object, args ...Object) Object {
+	function, ok := fn.(*Function)
+	if !ok {
+		return newError("not a function: %s", fn.Type())
+	}
+
+	// Create new environment for function execution
+	extendedEnv := NewEnclosedEnvironment(function.Env)
+
+	// Bind parameters
+	if len(args) != len(function.Parameters) {
+		return newError("function expects %d arguments, got %d", len(function.Parameters), len(args))
+	}
+
+	for i, param := range function.Parameters {
+		extendedEnv.Set(param.Name.Value, args[i])
+	}
+
+	// Evaluate function body
+	result := Eval(function.Body, extendedEnv)
+
+	// Unwrap return value
+	if returnValue, ok := result.(*ReturnValue); ok {
+		return returnValue.Value
+	}
+
+	return result
+}
+
+// writeHTTPResponse writes a TotalScript response object to an HTTP ResponseWriter.
+func writeHTTPResponse(w http.ResponseWriter, response Object) {
+	responseMap, ok := response.(*Map)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		//nolint:errcheck,gosec
+		w.Write([]byte("handler must return Response object"))
+		return
+	}
+
+	// Get status
+	status, ok := responseMap.Pairs["status"]
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		//nolint:errcheck,gosec
+		w.Write([]byte("response missing status"))
+		return
+	}
+
+	statusInt, ok := status.(*Integer)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		//nolint:errcheck,gosec
+		w.Write([]byte("response status must be integer"))
+		return
+	}
+
+	// Set headers
+	if headers, ok := responseMap.Pairs["headers"]; ok {
+		if headersMap, ok := headers.(*Map); ok {
+			for key, value := range headersMap.Pairs {
+				if arr, ok := value.(*Array); ok {
+					for _, elem := range arr.Elements {
+						if str, ok := elem.(*String); ok {
+							w.Header().Add(key, str.Value)
+						}
+					}
+				} else if str, ok := value.(*String); ok {
+					w.Header().Set(key, str.Value)
+				}
+			}
+		}
+	}
+
+	// Write status
+	w.WriteHeader(int(statusInt.Value))
+
+	// Get body
+	body, ok := responseMap.Pairs["body"]
+	if !ok {
+		return
+	}
+
+	// Write body
+	if str, ok := body.(*String); ok {
+		//nolint:errcheck,gosec
+		w.Write([]byte(str.Value))
+	} else {
+		// Convert non-string body to JSON
+		goValue := convertObjectToGo(body)
+		jsonBytes, err := json.Marshal(goValue)
+		if err != nil {
+			//nolint:errcheck,gosec
+			w.Write([]byte("error marshaling response: " + err.Error()))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		//nolint:errcheck,gosec
+		w.Write(jsonBytes)
 	}
 }

@@ -1186,6 +1186,15 @@ func evalMemberExpression(node *ast.MemberExpression, env *Environment) Object {
 		return newError("enum value only has 'value' member")
 	}
 
+	// Handle Map member access (same as index access)
+	if mapObj, ok := object.(*Map); ok {
+		value, exists := mapObj.Pairs[memberName]
+		if !exists {
+			return NULL
+		}
+		return value
+	}
+
 	// Look up method for this object type (for built-in types)
 	method := getMethod(object.Type(), memberName)
 	if method == nil {

@@ -1,0 +1,55 @@
+# Simple HTTP Server Example
+import "http"
+
+println("Setting up HTTP server...")
+
+var server = http.Server()
+
+# Simple routes
+server.get("/", function(req) {
+    return http.Response(200, "Welcome to TotalScript HTTP Server!")
+})
+
+server.get("/hello/:name", function(req) {
+    var name = req.params["name"]
+    return http.Response(200, "Hello, " + name + "!")
+})
+
+server.get("/api/status", function(req) {
+    var status = {
+        "server": "TotalScript HTTP",
+        "version": "1.0",
+        "status": "running"
+    }
+    return http.Response(200, status)
+})
+
+server.post("/api/echo", function(req) {
+    var data = req.json()
+    if data is Error {
+        return http.Response(400, {"error": "Invalid JSON"})
+    }
+    return http.Response(200, {"echo": data})
+})
+
+server.patch("/api/items/:id", function(req) {
+    var id = req.params["id"]
+    var data = req.json()
+    if data is Error {
+        return http.Response(400, {"error": "Invalid JSON"})
+    }
+    return http.Response(200, {"message": "Patched item " + id, "data": data})
+})
+
+println("✓ Server configured with routes:")
+println("  GET    /")
+println("  GET    /hello/:name")
+println("  GET    /api/status")
+println("  POST   /api/echo")
+println("  PATCH  /api/items/:id")
+println()
+println("Starting server on port 3000...")
+println("Test with: curl http://localhost:3000/")
+println()
+
+server.start(3000)

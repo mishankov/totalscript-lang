@@ -1,0 +1,140 @@
+# HTTP Module Test
+# Demonstrates HTTP server and client capabilities
+
+import "http"
+import "json"
+
+println("╔════════════════════════════════════════════╗")
+println("║      TotalScript HTTP Module Test         ║")
+println("╚════════════════════════════════════════════╝")
+println()
+
+println("=== Testing HTTP Response Constructor ===")
+var res1 = http.Response(200, "OK")
+println("✓ Response(200, 'OK'):", res1["status"], res1["body"])
+
+var res2 = http.Response(404, "Not Found", {"Content-Type": ["text/plain"]})
+println("✓ Response with headers:", res2["status"], res2["ok"])
+println()
+
+println("=== Testing HTTP Client ===")
+println("Making GET request to httpbin.org...")
+var getRes = http.client.get("https://httpbin.org/get")
+if getRes is Error {
+    println("✗ GET request failed:", getRes.message)
+} else {
+    println("✓ GET request successful")
+    println("  Status:", getRes["status"])
+    println("  OK:", getRes["ok"])
+    var data = getRes.json()
+    if data is Error {
+        println("  ✗ Failed to parse JSON:", data.message)
+    } else {
+        println("  ✓ JSON parsed successfully")
+    }
+}
+println()
+
+println("Making POST request to httpbin.org...")
+var postData = {"name": "TotalScript", "version": "1.0"}
+var postRes = http.client.post("https://httpbin.org/post", postData)
+if postRes is Error {
+    println("✗ POST request failed:", postRes.message)
+} else {
+    println("✓ POST request successful")
+    println("  Status:", postRes["status"])
+}
+println()
+
+println("=== Starting HTTP Server ===")
+println("Setting up routes...")
+
+var server = http.Server()
+
+# Home route
+server.get("/", function(req) {
+    return http.Response(200, "Hello, TotalScript HTTP Server!")
+})
+
+# Echo route
+server.get("/echo/:message", function(req) {
+    var msg = req.params["message"]
+    return http.Response(200, "Echo: " + msg)
+})
+
+# User route with JSON
+server.get("/users/:id", function(req) {
+    var userId = req.params["id"]
+    var user = {
+        "id": userId,
+        "name": "User " + userId,
+        "active": true
+    }
+    return http.Response(200, user)
+})
+
+# POST data route
+server.post("/data", function(req) {
+    var data = req.json()
+    if data is Error {
+        return http.Response(400, {"error": "Invalid JSON"})
+    }
+    return http.Response(201, {"received": data, "status": "created"})
+})
+
+# PUT route
+server.put("/update/:id", function(req) {
+    var id = req.params["id"]
+    return http.Response(200, {"message": "Updated item " + id})
+})
+
+# PATCH route
+server.patch("/patch/:id", function(req) {
+    var id = req.params["id"]
+    return http.Response(200, {"message": "Patched item " + id})
+})
+
+# DELETE route
+server.delete("/delete/:id", function(req) {
+    var id = req.params["id"]
+    return http.Response(204)
+})
+
+# Request info route
+server.get("/request-info", function(req) {
+    var info = {
+        "method": req.method,
+        "path": req.path,
+        "query": req.query,
+        "headers_count": req.headers.length()
+    }
+    return http.Response(200, info)
+})
+
+println("✓ Routes registered:")
+println("  GET  /")
+println("  GET  /echo/:message")
+println("  GET  /users/:id")
+println("  POST /data")
+println("  PUT  /update/:id")
+println("  PATCH /patch/:id")
+println("  DELETE /delete/:id")
+println("  GET  /request-info")
+println()
+
+println("Starting server on port 8080...")
+println()
+println("Test the server with:")
+println("  curl http://localhost:8080/")
+println("  curl http://localhost:8080/echo/hello")
+println("  curl http://localhost:8080/users/123")
+println("  curl -X POST http://localhost:8080/data -d '{\"test\":\"data\"}' -H 'Content-Type: application/json'")
+println("  curl -X PUT http://localhost:8080/update/456")
+println("  curl -X PATCH http://localhost:8080/patch/789")
+println("  curl -X DELETE http://localhost:8080/delete/999")
+println("  curl http://localhost:8080/request-info")
+println()
+println("Press Ctrl+C to stop the server")
+println()
+
+server.start(8080)
