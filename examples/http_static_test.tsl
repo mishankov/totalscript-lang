@@ -1,0 +1,67 @@
+# HTTP Static Files and Full Features Test
+import "http"
+
+println("╔════════════════════════════════════════════╗")
+println("║  TotalScript HTTP Complete Features Test  ║")
+println("╚════════════════════════════════════════════╝")
+println()
+
+var server = http.Server()
+
+# Middleware for logging
+server.use(function(req, next) {
+    println("→", req.method, req.path)
+    var res = next(req)
+    println("←", res["status"], res["ok"])
+    return res
+})
+
+# API Routes
+server.get("/api/status", function(req) {
+    return http.Response(200, {
+        "server": "TotalScript HTTP",
+        "version": "1.0",
+        "features": ["middleware", "static-files", "path-params", "json"]
+    })
+})
+
+server.get("/api/hello/:name", function(req) {
+    var name = req.params["name"]
+    return http.Response(200, {
+        "message": "Hello, " + name + "!",
+        "timestamp": "2024-01-01"
+    })
+})
+
+server.post("/api/echo", function(req) {
+    var data = req.json()
+    if data is Error {
+        return http.Response(400, {"error": "Invalid JSON", "message": data.message})
+    }
+    return http.Response(200, {"received": data, "echo": true})
+})
+
+# Serve static files from ./public directory
+server.static("/", "./examples/public")
+
+println("✓ Server configured:")
+println("  - Middleware: Request logging")
+println("  - Static files: ./examples/public → /")
+println("  - API Routes:")
+println("      GET  /api/status")
+println("      GET  /api/hello/:name")
+println("      POST /api/echo")
+println()
+println("Starting server on port 3002...")
+println()
+println("Open in browser:")
+println("  http://localhost:3002/")
+println("  http://localhost:3002/index.html")
+println()
+println("Test API:")
+println("  curl http://localhost:3002/api/status")
+println("  curl http://localhost:3002/api/hello/World")
+println("  curl -X POST http://localhost:3002/api/echo -d '{\"test\":123}' -H 'Content-Type: application/json'")
+println()
+
+server.start(3002)

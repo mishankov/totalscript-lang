@@ -1243,8 +1243,8 @@ func createStartMethod(state *httpServerState) *Builtin {
 				// Create request object
 				requestObj := createRequestObject(r, params)
 
-				// Call handler function
-				result := callTSFunction(handler, requestObj)
+				// Execute middleware chain and handler
+				result := executeMiddlewareChain(state.middleware, handler, requestObj)
 
 				// Handle errors
 				if err, ok := result.(*Error); ok {
@@ -1321,6 +1321,46 @@ func createUseMethod(state *httpServerState) *Builtin {
 			return NULL
 		},
 	}
+}
+
+// executeMiddlewareChain executes the middleware chain and final handler.
+// Each middleware receives (req, next) where next() continues to the next middleware.
+// The final next() calls the actual route handler.
+//
+//nolint:gocognit
+func executeMiddlewareChain(middleware []Object, handler Object, req Object) Object {
+	// If no middleware, call handler directly
+	if len(middleware) == 0 {
+		return callTSFunction(handler, req)
+	}
+
+	// Build the execution chain recursively
+	// The chain executes: mw[0] -> mw[1] -> ... -> handler
+	var executeChain func(index int, request Object) Object
+	executeChain = func(index int, request Object) Object {
+		// If we've gone through all middleware, call the handler
+		if index >= len(middleware) {
+			return callTSFunction(handler, request)
+		}
+
+		// Create the "next" function for this middleware
+		nextFunc := &Builtin{
+			Name: "next",
+			Fn: func(args ...Object) Object {
+				if len(args) != 1 {
+					return newError("next() requires 1 argument (request)")
+				}
+				// Continue to next middleware or handler
+				return executeChain(index+1, args[0])
+			},
+		}
+
+		// Call current middleware with (req, next)
+		return callTSFunction(middleware[index], request, nextFunc)
+	}
+
+	// Start the chain with the first middleware
+	return executeChain(0, req)
 }
 
 // matchRoute finds a matching route and extracts path parameters.
