@@ -38,3 +38,12 @@ server.post("/add", function(r: http.Request): http.Response {
 Looks like parser does not support types from other modules in function signatures
 
 - [ ] Live reloading when code changes by default
+- [ ] Make annotaions after field declaration like 
+
+```tsl
+const AddOp = model {
+    a: float @id
+    b: float @id
+    result: float
+}
+```
