@@ -6,19 +6,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 TotalScript is a scripting language implementation in Go with batteries included (database and HTTP server modules). The project implements a complete interpreter following the classic compiler architecture pattern.
 
-**Current Status**: All phases complete! Core language with models, enums, type enforcement, collections, modules, database persistence, and HTTP server/client (~100% of specification implemented).
+**Current Status**: All phases complete! Core language with models, enums, type enforcement, collections, modules, database persistence, and HTTP server/client (96.8% specification compliance - see SPECIFICATION_COMPLIANCE.md).
 
 **Implementation Progress**:
 - ✅ **Phase 1**: Lexer - All tokens, comments, string escapes (100%)
 - ✅ **Phase 2**: Parser - AST nodes for core features (100%)
 - ✅ **Phase 3**: Interpreter - Core evaluation, control flow, closures (100%)
 - ✅ **Phase 4**: CLI - File execution with tsl binary (100%)
-- ✅ **Phase 5**: Built-ins - stdlib functions and methods (100%)
+- ✅ **Phase 5**: Built-ins - stdlib functions and methods (91.7% - missing array `.join()`)
 - ✅ **Phase 6**: Models & Enums - User-defined types (100% spec compliant)
-- ✅ **Phase 7**: Type Enforcement - Union types, optional types, generics, mixed-type arithmetic (100% complete)
+- ✅ **Phase 7**: Type Enforcement - Union types, optional types, generics, mixed-type arithmetic (87.5% - type narrowing partial)
 - ✅ **Phase 8**: Collection Assignment & Slicing - Index/member assignment, array slicing (100%)
-- ✅ **Phase 9**: Modules & Standard Library - Import system with math, json, fs, time, os modules (100%, 5/6 stdlib modules)
-- ✅ **Phase 10**: Database - SQLite integration with EAV storage, @id annotations, query system (100%)
+- ✅ **Phase 9**: Modules & Standard Library - Import system with math, json, fs, time, os, http (100% - crypto optional)
+- ✅ **Phase 10**: Database - SQLite integration with EAV storage, @id annotations, query system (70% - missing batch ops, transactions)
 - ✅ **Phase 11**: HTTP Module - Server and client implementation (100%)
 
 ## Commands
@@ -376,24 +376,53 @@ No partially working features currently - all implemented features are fully fun
 
 Features defined in `specification.md` but not yet implemented:
 
-### Advanced Features
-- **Type narrowing**: `is` operator checks type but doesn't affect subsequent code flow
-- **Crypto module**: Hash functions and encryption utilities not yet implemented (optional stdlib module)
+### Array Methods
+- **`.join(separator)`**: Concatenate array elements into string with separator (workaround: use `.reduce()`)
+
+### Database Module
+- **`db.saveAll([instances])`**: Batch save multiple instances
+- **`delete` modifier**: `db.find(Model) { condition } delete` - Delete by query
+- **`update` modifier**: `db.find(Model) { condition } update { this.field = value }` - Bulk update
+- **`db.transaction { }`**: Transaction support for atomic operations
+- **String matching in queries**: `.startsWith()`, `.contains()` on model fields
+- **Automatic `_id` field**: For models without @id annotation
+
+### Type System
+- **Type narrowing**: `is` operator checks type but doesn't narrow variable type in subsequent code flow (partial implementation)
+
+### Optional Modules
+- **Crypto module**: Hash functions (SHA256, MD5, SHA1), HMAC, encryption utilities
 
 ## Known Limitations
 
 Current implementation limitations to be aware of:
 
-### Missing Features
-1. **Crypto module**: Hash functions and encryption not yet implemented (optional)
+### Missing Features (See SPECIFICATION_COMPLIANCE.md for details)
+1. **Array `.join()` method**: Easy workaround with `.reduce()`
+2. **Database batch operations**: `saveAll()`, `transaction()` not implemented
+3. **Database query modifiers**: `delete`, `update` modifiers missing
+4. **Crypto module**: Hash functions and encryption (optional)
+5. **Type narrowing**: Advanced feature requiring control flow analysis
 
 ## Specification Compliance
 
-**Compliance Status**: ✅ **100% compliant for all features**
+**Compliance Status**: ✅ **96.8% specification compliant** (151/156 features)
 
-All implemented features correctly follow `specification.md`. There are no deviations or specification violations. The implementation uses a phased approach:
+All implemented features correctly follow `specification.md`. There are no deviations or specification violations. See `SPECIFICATION_COMPLIANCE.md` for detailed analysis.
 
-- **Phases 1-11** (All phases): ✅ Complete and spec-compliant
+**Summary**:
+- ✅ **Core Language (100%)**: All primitive types, operators, control flow, functions, closures
+- ✅ **User Types (100%)**: Models with constructors/methods, enums with all features
+- ✅ **Collections (100%)**: Arrays, maps, slicing, indexing fully compliant
+- ⚠️ **Array Methods (91.7%)**: Missing `.join()` only
+- ⚠️ **Type System (87.5%)**: Type narrowing partial (checking works, control flow analysis missing)
+- ⚠️ **Database (70%)**: Core works perfectly, missing batch ops/transactions
+- ✅ **HTTP (100%)**: Server, client, middleware, static files all compliant
+- ✅ **Standard Library (100%)**: math, json, fs, time, os fully compliant
+- ❌ **Crypto (0%)**: Optional module, not yet implemented
+
+The implementation uses a phased approach with all core phases complete:
+- **Phases 1-11**: ✅ All phases implemented (some with minor gaps noted above)
   - Core Language, Built-ins, Models & Enums, Type Enforcement, Assignment & Slicing
   - Modules & Standard Library (math, json, fs, time, os, http)
   - Database (SQLite integration with EAV storage and query system)
@@ -408,18 +437,18 @@ All implemented features correctly follow `specification.md`. There are no devia
 | **Control Flow** | 100% | ✅ Complete |
 | **Functions** | 100% | ✅ Complete |
 | **Collections** | 100% | ✅ Complete (full assignment & slicing) |
-| **Type System** | 90% | ✅ Enforced for var/const (not for reassignments) |
+| **Type System** | 87.5% | ⚠️ Type narrowing partial |
 | **Built-in Functions** | 100% | ✅ Complete |
 | **String Methods** | 100% | ✅ Complete |
-| **Array Methods** | 100% | ✅ Complete |
+| **Array Methods** | 91.7% | ⚠️ Missing `.join()` |
 | **Map Methods** | 100% | ✅ Complete |
 | **Models** | 100% | ✅ Complete (spec compliant) |
 | **Enums** | 100% | ✅ Complete (spec compliant) |
 | **Modules** | 100% | ✅ Complete (import system) |
 | **Standard Library** | 100% | ✅ 6/6 core modules (crypto optional) |
-| **Database** | 100% | ✅ Complete (EAV storage, @id, queries) |
+| **Database** | 70% | ⚠️ Missing batch ops, transactions |
 | **HTTP** | 100% | ✅ Complete (server & client) |
-| **Overall** | ~100% | ✅ Fully Complete |
+| **Overall** | 96.8% | ✅ Production Ready |
 
 ### Testing Coverage
 
@@ -560,4 +589,4 @@ Based on dependencies and impact:
    - HTTP client: `http.client.get()`, `http.client.post()`, etc.
    - All HTTP methods including PATCH
 
-**Current Status**: All phases complete (Phases 1-11)! TotalScript language implementation is 100% feature-complete according to specification.
+**Current Status**: All phases complete (Phases 1-11)! TotalScript language implementation is 96.8% specification-compliant (see SPECIFICATION_COMPLIANCE.md for missing features).
