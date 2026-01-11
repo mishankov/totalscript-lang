@@ -1593,7 +1593,20 @@ func writeHTTPResponse(w http.ResponseWriter, response Object) {
 type DBState struct {
 	path string
 	db   *sql.DB
+	tx   *sql.Tx // Active transaction, if any
 	mu   sync.Mutex
+}
+
+// execer returns the appropriate executor (transaction or db connection)
+func (s *DBState) execer() interface {
+	Exec(query string, args ...interface{}) (sql.Result, error)
+	Query(query string, args ...interface{}) (*sql.Rows, error)
+	QueryRow(query string, args ...interface{}) *sql.Row
+} {
+	if s.tx != nil {
+		return s.tx
+	}
+	return s.db
 }
 
 func createDBModule() *Module {
@@ -1611,8 +1624,10 @@ func createDBModule() *Module {
 
 	env.Set("configure", createDBConfigureFunc(state))
 	env.Set("save", createDBSaveFunc(state))
+	env.Set("saveAll", createDBSaveAllFunc(state))
 	env.Set("delete", createDBDeleteFunc(state))
 	env.Set("deleteAll", createDBDeleteAllFunc(state))
+	env.Set("transaction", createDBTransactionFunc(state))
 
 	return &Module{Name: "db", Scope: env}
 }
@@ -1693,7 +1708,7 @@ func createDBSaveFunc(state *DBState) *Builtin {
 
 			// Delete existing rows for this entity (for updates)
 			//nolint:errcheck
-			state.db.Exec("DELETE FROM data WHERE entity_id = ?", entityID)
+			state.execer().Exec("DELETE FROM data WHERE entity_id = ?", entityID)
 
 			// Insert all fields
 			for fieldName, value := range instance.Fields {
@@ -1704,7 +1719,7 @@ func createDBSaveFunc(state *DBState) *Builtin {
 
 				fieldValue, fieldType := serializeDBValue(value)
 
-				_, err := state.db.Exec(`
+				_, err := state.execer().Exec(`
 					INSERT INTO data (entity_id, model_type, field_name, field_value, field_type)
 					VALUES (?, ?, ?, ?, ?)
 				`, entityID, instance.Model.Name, fieldName, fieldValue, fieldType)
@@ -1716,6 +1731,67 @@ func createDBSaveFunc(state *DBState) *Builtin {
 
 			// Store entity_id in instance for future reference
 			instance.Fields["_entity_id"] = &String{Value: entityID}
+
+			return NULL
+		},
+	}
+}
+
+func createDBSaveAllFunc(state *DBState) *Builtin {
+	return &Builtin{
+		Name: "saveAll",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("saveAll() takes 1 argument")
+			}
+			arr, ok := args[0].(*Array)
+			if !ok {
+				return newError("saveAll() argument must be an array")
+			}
+
+			state.mu.Lock()
+			defer state.mu.Unlock()
+
+			if err := state.ensureOpen(); err != nil {
+				return &Error{Message: err.Error()}
+			}
+
+			// Save each instance
+			for _, element := range arr.Elements {
+				instance, ok := element.(*ModelInstance)
+				if !ok {
+					return newError("saveAll() array must contain only model instances")
+				}
+
+				// Find existing entity by @id fields, or generate new UUID
+				entityID := getOrCreateEntityID(state, instance)
+
+				// Delete existing rows for this entity (for updates)
+				//nolint:errcheck
+				state.execer().Exec("DELETE FROM data WHERE entity_id = ?", entityID)
+
+				// Insert all fields
+				for fieldName, value := range instance.Fields {
+					// Skip internal _entity_id field
+					if fieldName == "_entity_id" {
+						continue
+					}
+
+					fieldValue, fieldType := serializeDBValue(value)
+
+					_, err := state.execer().Exec(`
+						INSERT INTO data (entity_id, model_type, field_name, field_value, field_type)
+						VALUES (?, ?, ?, ?, ?)
+					`, entityID, instance.Model.Name, fieldName, fieldValue, fieldType)
+
+					if err != nil {
+						return &Error{Message: err.Error()}
+					}
+				}
+
+				// Store entity_id in instance for future reference
+				instance.Fields["_entity_id"] = &String{Value: entityID}
+			}
 
 			return NULL
 		},
@@ -1771,7 +1847,7 @@ func findEntityByIdFields(state *DBState, instance *ModelInstance, idFields []st
 	query += " LIMIT 1"
 
 	var entityID string
-	row := state.db.QueryRow(query, args...)
+	row := state.execer().QueryRow(query, args...)
 	if err := row.Scan(&entityID); err != nil {
 		return "" // Not found
 	}
@@ -1858,7 +1934,7 @@ func createDBDeleteFunc(state *DBState) *Builtin {
 			}
 			entityID := entityIDStr.Value
 
-			_, err := state.db.Exec("DELETE FROM data WHERE entity_id = ?", entityID)
+			_, err := state.execer().Exec("DELETE FROM data WHERE entity_id = ?", entityID)
 			if err != nil {
 				return &Error{Message: err.Error()}
 			}
@@ -1886,11 +1962,72 @@ func createDBDeleteAllFunc(state *DBState) *Builtin {
 				return &Error{Message: err.Error()}
 			}
 
-			_, err := state.db.Exec("DELETE FROM data WHERE model_type = ?", model.Name)
+			_, err := state.execer().Exec("DELETE FROM data WHERE model_type = ?", model.Name)
 			if err != nil {
 				return &Error{Message: err.Error()}
 			}
 			return NULL
+		},
+	}
+}
+
+func createDBTransactionFunc(state *DBState) *Builtin {
+	return &Builtin{
+		Name: "transaction",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("transaction() takes 1 argument")
+			}
+			fn, ok := args[0].(*Function)
+			if !ok {
+				return newError("transaction() argument must be a function")
+			}
+
+			// Begin transaction (with lock)
+			state.mu.Lock()
+			if err := state.ensureOpen(); err != nil {
+				state.mu.Unlock()
+				return &Error{Message: err.Error()}
+			}
+
+			tx, err := state.db.Begin()
+			if err != nil {
+				state.mu.Unlock()
+				return &Error{Message: err.Error()}
+			}
+
+			// Set active transaction
+			state.tx = tx
+			state.mu.Unlock()
+
+			// Cleanup function
+			defer func() {
+				state.mu.Lock()
+				state.tx = nil
+				state.mu.Unlock()
+			}()
+
+			// Execute the function (without holding the lock)
+			// Individual db operations will lock/unlock as needed
+			result := applyFunction(fn, []Object{}, NewEnvironment())
+
+			// Commit or rollback (with lock)
+			state.mu.Lock()
+			defer state.mu.Unlock()
+
+			// Check if function returned an error
+			if IsError(result) {
+				//nolint:errcheck
+				tx.Rollback()
+				return result
+			}
+
+			// Commit transaction
+			if err := tx.Commit(); err != nil {
+				return &Error{Message: err.Error()}
+			}
+
+			return result
 		},
 	}
 }

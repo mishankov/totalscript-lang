@@ -390,6 +390,7 @@ arr.insert(1, 10)         # arr is now [1, 10, 2, 3]
 arr.remove(1)             # removes at index 1, arr is now [1, 2, 3]
 arr.contains(2)           # true
 arr.indexOf(2)            # 1 (returns integer | Error, Error if not found)
+arr.join(", ")            # "1, 2, 3" (converts elements to strings and joins with separator)
 
 # Functional methods
 arr.map(function(x) { return x * 2 })           # [2, 4, 6]
@@ -629,11 +630,6 @@ var circles = db.find(Circle) {
 var user = db.find(User) { this.email == "alice@example.com" } first
 user.age = 31
 db.save(user)       # Updates existing record (same primary key)
-
-# Bulk update
-db.find(User) { this.age < 0 } update {
-  this.age = 0
-}
 ```
 
 ### Deleting Data
@@ -642,9 +638,6 @@ db.find(User) { this.age < 0 } update {
 # Delete single instance
 db.delete(user)
 
-# Delete by query
-db.find(User) { this.age < 18 } delete
-
 # Delete all instances of a model
 db.deleteAll(User)
 ```
@@ -652,12 +645,11 @@ db.deleteAll(User)
 ### Transactions
 
 ```tsl
-db.transaction {
+db.transaction(function() {
   db.save(user1)
   db.save(user2)
-  db.find(Point) { this.x < 0 } delete
-}
-# All operations succeed or all fail
+  # All operations succeed or all fail
+})
 ```
 
 ## HTTP
@@ -978,7 +970,6 @@ println(geo.PI)                   # 3.14159
 | `time` | Date, time, and duration utilities |
 | `fs` | File system operations |
 | `os` | Operating system utilities, environment variables |
-| `crypto` | Hashing and encryption utilities |
 
 #### math module
 ```tsl

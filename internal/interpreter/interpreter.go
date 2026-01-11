@@ -1580,7 +1580,7 @@ func evalDbFindExpression(node *ast.DbFindExpression, env *Environment) Object {
 	}
 
 	// Execute query to get entity IDs
-	rows, err := state.db.Query(sql, args...)
+	rows, err := state.execer().Query(sql, args...)
 	if err != nil {
 		return newError("query error: %s", err.Error())
 	}
@@ -1734,7 +1734,7 @@ func loadInstance(state *DBState, model *Model, entityID string) Object {
 		Fields: make(map[string]Object),
 	}
 
-	rows, err := state.db.Query(
+	rows, err := state.execer().Query(
 		"SELECT field_name, field_value, field_type FROM data WHERE entity_id = ?",
 		entityID,
 	)

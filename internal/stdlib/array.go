@@ -14,6 +14,7 @@ func ArrayMethods() map[string]interpreter.BuiltinFunction {
 		"remove":   arrayRemove,
 		"contains": arrayContains,
 		"indexOf":  arrayIndexOf,
+		"join":     arrayJoin,
 		"map":      arrayMap,
 		"filter":   arrayFilter,
 		"reduce":   arrayReduce,
@@ -174,6 +175,53 @@ func arrayIndexOf(args ...interpreter.Object) interpreter.Object {
 	}
 
 	return &interpreter.Error{Message: "value not found in array"}
+}
+
+// join(separator) concatenates all array elements into a string with the given separator.
+func arrayJoin(args ...interpreter.Object) interpreter.Object {
+	if len(args) != 2 {
+		return &interpreter.Error{Message: "join() takes exactly 1 argument"}
+	}
+
+	arr, ok := args[0].(*interpreter.Array)
+	if !ok {
+		return &interpreter.Error{Message: "join() can only be called on arrays"}
+	}
+
+	separator, ok := args[1].(*interpreter.String)
+	if !ok {
+		return &interpreter.Error{Message: "join() argument must be a string"}
+	}
+
+	// Convert all elements to strings and join
+	result := ""
+	for i, element := range arr.Elements {
+		if i > 0 {
+			result += separator.Value
+		}
+		// Convert element to string
+		result += elementToString(element)
+	}
+
+	return &interpreter.String{Value: result}
+}
+
+// elementToString converts an object to its string representation
+func elementToString(obj interpreter.Object) string {
+	switch v := obj.(type) {
+	case *interpreter.String:
+		return v.Value
+	case *interpreter.Integer:
+		return v.Inspect()
+	case *interpreter.Float:
+		return v.Inspect()
+	case *interpreter.Boolean:
+		return v.Inspect()
+	case *interpreter.Null:
+		return "null"
+	default:
+		return obj.Inspect()
+	}
 }
 
 // map(fn) returns a new array with transformed elements.

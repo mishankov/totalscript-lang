@@ -668,3 +668,99 @@ func TestArrayEach(t *testing.T) {
 		t.Errorf("expected NULL, got %s", result.Type())
 	}
 }
+
+func TestArrayJoin(t *testing.T) {
+	t.Parallel()
+
+	methods := ArrayMethods()
+	joinFn := methods["join"]
+
+	tests := []struct {
+		name      string
+		receiver  *interpreter.Array
+		separator string
+		expected  string
+	}{
+		{
+			name:      "empty array",
+			receiver:  &interpreter.Array{Elements: []interpreter.Object{}},
+			separator: ", ",
+			expected:  "",
+		},
+		{
+			name: "array with integers",
+			receiver: &interpreter.Array{
+				Elements: []interpreter.Object{
+					&interpreter.Integer{Value: 1},
+					&interpreter.Integer{Value: 2},
+					&interpreter.Integer{Value: 3},
+				},
+			},
+			separator: ", ",
+			expected:  "1, 2, 3",
+		},
+		{
+			name: "array with strings",
+			receiver: &interpreter.Array{
+				Elements: []interpreter.Object{
+					&interpreter.String{Value: "hello"},
+					&interpreter.String{Value: "world"},
+				},
+			},
+			separator: " ",
+			expected:  "hello world",
+		},
+		{
+			name: "array with mixed types",
+			receiver: &interpreter.Array{
+				Elements: []interpreter.Object{
+					&interpreter.String{Value: "hello"},
+					&interpreter.Integer{Value: 42},
+					&interpreter.Boolean{Value: true},
+				},
+			},
+			separator: "-",
+			expected:  "hello-42-true",
+		},
+		{
+			name: "single element",
+			receiver: &interpreter.Array{
+				Elements: []interpreter.Object{
+					&interpreter.String{Value: "only"},
+				},
+			},
+			separator: ", ",
+			expected:  "only",
+		},
+		{
+			name: "array with null",
+			receiver: &interpreter.Array{
+				Elements: []interpreter.Object{
+					&interpreter.String{Value: "a"},
+					interpreter.NULL,
+					&interpreter.String{Value: "b"},
+				},
+			},
+			separator: "-",
+			expected:  "a-null-b",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := joinFn(tt.receiver, &interpreter.String{Value: tt.separator})
+
+			strObj, ok := result.(*interpreter.String)
+			if !ok {
+				t.Errorf("expected STRING, got %s", result.Type())
+				return
+			}
+
+			if strObj.Value != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, strObj.Value)
+			}
+		})
+	}
+}
