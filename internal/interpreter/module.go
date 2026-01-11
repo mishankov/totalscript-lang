@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"bytes"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,11 +10,15 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/mishankov/totalscript-lang/internal/lexer"
 	"github.com/mishankov/totalscript-lang/internal/parser"
+	_ "modernc.org/sqlite" // SQLite driver
 )
 
 // ModuleCache stores loaded modules to prevent re-evaluation.
@@ -68,6 +73,8 @@ func loadStdlibModule(name string) Object {
 		module = createOSModule()
 	case "http":
 		module = createHTTPModule()
+	case "db":
+		module = createDBModule()
 	default:
 		return newError("unknown stdlib module: %s", name)
 	}
@@ -1576,5 +1583,345 @@ func writeHTTPResponse(w http.ResponseWriter, response Object) {
 		w.Header().Set("Content-Type", "application/json")
 		//nolint:errcheck,gosec
 		w.Write(jsonBytes)
+	}
+}
+
+// Database module for SQLite persistence
+
+// DBState holds the database connection state.
+// Exported so it can be wrapped in DBStateWrapper for query execution.
+type DBState struct {
+	path string
+	db   *sql.DB
+	mu   sync.Mutex
+}
+
+func createDBModule() *Module {
+	env := NewEnvironment()
+
+	// Database state (singleton)
+	state := &DBState{
+		path: "data.db",
+		db:   nil, // Opened lazily
+	}
+
+	// Store state reference for query execution
+	// This is used internally by evalDbFindExpression
+	env.Set("__db_state__", &DBStateWrapper{State: state})
+
+	env.Set("configure", createDBConfigureFunc(state))
+	env.Set("save", createDBSaveFunc(state))
+	env.Set("delete", createDBDeleteFunc(state))
+	env.Set("deleteAll", createDBDeleteAllFunc(state))
+
+	return &Module{Name: "db", Scope: env}
+}
+
+func (s *DBState) ensureOpen() error {
+	if s.db != nil {
+		return nil
+	}
+	db, err := sql.Open("sqlite", s.path)
+	if err != nil {
+		return err
+	}
+	s.db = db
+	return s.createSchema()
+}
+
+func (s *DBState) createSchema() error {
+	_, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS data (
+			entity_id TEXT NOT NULL,
+			model_type TEXT NOT NULL,
+			field_name TEXT NOT NULL,
+			field_value TEXT,
+			field_type TEXT NOT NULL,
+			PRIMARY KEY (entity_id, field_name)
+		);
+		CREATE INDEX IF NOT EXISTS idx_model ON data(model_type);
+		CREATE INDEX IF NOT EXISTS idx_field ON data(model_type, field_name, field_value);
+	`)
+	return err
+}
+
+func createDBConfigureFunc(state *DBState) *Builtin {
+	return &Builtin{
+		Name: "configure",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("configure() takes 1 argument")
+			}
+			path, ok := args[0].(*String)
+			if !ok {
+				return newError("configure() argument must be string")
+			}
+			state.mu.Lock()
+			defer state.mu.Unlock()
+			if state.db != nil {
+				//nolint:errcheck
+				state.db.Close()
+				state.db = nil
+			}
+			state.path = path.Value
+			return NULL
+		},
+	}
+}
+
+func createDBSaveFunc(state *DBState) *Builtin {
+	return &Builtin{
+		Name: "save",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("save() takes 1 argument")
+			}
+			instance, ok := args[0].(*ModelInstance)
+			if !ok {
+				return newError("save() argument must be model instance")
+			}
+
+			state.mu.Lock()
+			defer state.mu.Unlock()
+
+			if err := state.ensureOpen(); err != nil {
+				return &Error{Message: err.Error()}
+			}
+
+			// Find existing entity by @id fields, or generate new UUID
+			entityID := getOrCreateEntityID(state, instance)
+
+			// Delete existing rows for this entity (for updates)
+			//nolint:errcheck
+			state.db.Exec("DELETE FROM data WHERE entity_id = ?", entityID)
+
+			// Insert all fields
+			for fieldName, value := range instance.Fields {
+				// Skip internal _entity_id field
+				if fieldName == "_entity_id" {
+					continue
+				}
+
+				fieldValue, fieldType := serializeDBValue(value)
+
+				_, err := state.db.Exec(`
+					INSERT INTO data (entity_id, model_type, field_name, field_value, field_type)
+					VALUES (?, ?, ?, ?, ?)
+				`, entityID, instance.Model.Name, fieldName, fieldValue, fieldType)
+
+				if err != nil {
+					return &Error{Message: err.Error()}
+				}
+			}
+
+			// Store entity_id in instance for future reference
+			instance.Fields["_entity_id"] = &String{Value: entityID}
+
+			return NULL
+		},
+	}
+}
+
+func getOrCreateEntityID(state *DBState, instance *ModelInstance) string {
+	// Check for @id annotated fields
+	idFields := getIdFields(instance.Model)
+
+	if len(idFields) > 0 {
+		// Try to find existing entity by @id field values
+		existingID := findEntityByIdFields(state, instance, idFields)
+		if existingID != "" {
+			return existingID // Update existing
+		}
+	}
+
+	// No @id or no existing match - generate new UUID
+	return uuid.New().String()
+}
+
+func getIdFields(model *Model) []string {
+	idFields := []string{}
+	for _, fieldName := range model.FieldNames {
+		if annotations, ok := model.Annotations[fieldName]; ok {
+			for _, ann := range annotations {
+				if ann == "id" {
+					idFields = append(idFields, fieldName)
+					break
+				}
+			}
+		}
+	}
+	return idFields
+}
+
+func findEntityByIdFields(state *DBState, instance *ModelInstance, idFields []string) string {
+	if len(idFields) == 0 {
+		return ""
+	}
+
+	// Build query to find entity where all @id fields match
+	query := "SELECT DISTINCT entity_id FROM data WHERE model_type = ?"
+	args := []interface{}{instance.Model.Name}
+
+	for _, fieldName := range idFields {
+		value := instance.Fields[fieldName]
+		fieldValue, _ := serializeDBValue(value)
+		query += " AND entity_id IN (SELECT entity_id FROM data WHERE field_name = ? AND field_value = ?)"
+		args = append(args, fieldName, fieldValue)
+	}
+	query += " LIMIT 1"
+
+	var entityID string
+	row := state.db.QueryRow(query, args...)
+	if err := row.Scan(&entityID); err != nil {
+		return "" // Not found
+	}
+	return entityID
+}
+
+func serializeDBValue(obj Object) (string, string) {
+	switch v := obj.(type) {
+	case *Integer:
+		return strconv.FormatInt(v.Value, 10), "integer"
+	case *Float:
+		return strconv.FormatFloat(v.Value, 'f', -1, 64), "float"
+	case *String:
+		return v.Value, "string"
+	case *Boolean:
+		if v.Value {
+			return "true", "boolean"
+		}
+		return "false", "boolean"
+	case *Null:
+		return "", "null"
+	case *ModelInstance, *Array, *Map:
+		// Serialize as JSON
+		jsonBytes, _ := json.Marshal(convertObjectToGo(v))
+		return string(jsonBytes), "json"
+	default:
+		return obj.Inspect(), "string"
+	}
+}
+
+func deserializeDBValue(value, ftype string) Object {
+	switch ftype {
+	case "integer":
+		i, _ := strconv.ParseInt(value, 10, 64)
+		return &Integer{Value: i}
+	case "float":
+		f, _ := strconv.ParseFloat(value, 64)
+		return &Float{Value: f}
+	case "string":
+		return &String{Value: value}
+	case "boolean":
+		return nativeBoolToBooleanObject(value == "true")
+	case "null":
+		return NULL
+	case "json":
+		// Parse JSON back to TotalScript object
+		var goValue interface{}
+		if err := json.Unmarshal([]byte(value), &goValue); err != nil {
+			return NULL
+		}
+		return convertGoToObject(goValue)
+	default:
+		return &String{Value: value}
+	}
+}
+
+func createDBDeleteFunc(state *DBState) *Builtin {
+	return &Builtin{
+		Name: "delete",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("delete() takes 1 argument")
+			}
+			instance, ok := args[0].(*ModelInstance)
+			if !ok {
+				return newError("delete() argument must be model instance")
+			}
+
+			state.mu.Lock()
+			defer state.mu.Unlock()
+
+			if err := state.ensureOpen(); err != nil {
+				return &Error{Message: err.Error()}
+			}
+
+			// Get entity_id from saved instance
+			entityIDObj, ok := instance.Fields["_entity_id"]
+			if !ok {
+				return newError("instance has not been saved to database")
+			}
+			entityIDStr, ok := entityIDObj.(*String)
+			if !ok {
+				return newError("internal error: _entity_id is not a string")
+			}
+			entityID := entityIDStr.Value
+
+			_, err := state.db.Exec("DELETE FROM data WHERE entity_id = ?", entityID)
+			if err != nil {
+				return &Error{Message: err.Error()}
+			}
+			return NULL
+		},
+	}
+}
+
+func createDBDeleteAllFunc(state *DBState) *Builtin {
+	return &Builtin{
+		Name: "deleteAll",
+		Fn: func(args ...Object) Object {
+			if len(args) != 1 {
+				return newError("deleteAll() takes 1 argument")
+			}
+			model, ok := args[0].(*Model)
+			if !ok {
+				return newError("deleteAll() argument must be a model type")
+			}
+
+			state.mu.Lock()
+			defer state.mu.Unlock()
+
+			if err := state.ensureOpen(); err != nil {
+				return &Error{Message: err.Error()}
+			}
+
+			_, err := state.db.Exec("DELETE FROM data WHERE model_type = ?", model.Name)
+			if err != nil {
+				return &Error{Message: err.Error()}
+			}
+			return NULL
+		},
+	}
+}
+
+func convertGoToObject(val interface{}) Object {
+	switch v := val.(type) {
+	case nil:
+		return NULL
+	case bool:
+		return nativeBoolToBooleanObject(v)
+	case int:
+		return &Integer{Value: int64(v)}
+	case int64:
+		return &Integer{Value: v}
+	case float64:
+		return &Float{Value: v}
+	case string:
+		return &String{Value: v}
+	case []interface{}:
+		elements := make([]Object, len(v))
+		for i, elem := range v {
+			elements[i] = convertGoToObject(elem)
+		}
+		return &Array{Elements: elements}
+	case map[string]interface{}:
+		pairs := make(map[string]Object)
+		for key, val := range v {
+			pairs[key] = convertGoToObject(val)
+		}
+		return &Map{Pairs: pairs}
+	default:
+		return &String{Value: fmt.Sprintf("%v", v)}
 	}
 }

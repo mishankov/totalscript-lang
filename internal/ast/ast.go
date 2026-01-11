@@ -614,12 +614,19 @@ func (te *TypeExpression) String() string {
 
 // ModelField represents a field in a model definition.
 type ModelField struct {
-	Name *Identifier
-	Type *TypeExpression
+	Annotations []string // Annotations like "id" for @id
+	Name        *Identifier
+	Type        *TypeExpression
 }
 
 func (mf *ModelField) String() string {
 	var out bytes.Buffer
+	// Include annotations in output
+	for _, ann := range mf.Annotations {
+		out.WriteString("@")
+		out.WriteString(ann)
+		out.WriteString(" ")
+	}
 	out.WriteString(mf.Name.String())
 	out.WriteString(": ")
 	out.WriteString(mf.Type.String())
@@ -714,3 +721,93 @@ type ThisExpression struct {
 func (te *ThisExpression) expressionNode()      {}
 func (te *ThisExpression) TokenLiteral() string { return te.Token.Literal }
 func (te *ThisExpression) String() string       { return "this" }
+
+// DbFindExpression represents a database query: db.find(Model) { conditions }
+type DbFindExpression struct {
+	Token      token.Token       // The token after 'find' (usually '(')
+	Model      Expression        // The model type being queried
+	Conditions []*QueryCondition // Query conditions
+	Modifiers  *QueryModifiers   // Query modifiers (first, count, limit, etc.)
+}
+
+func (dfe *DbFindExpression) expressionNode()      {}
+func (dfe *DbFindExpression) TokenLiteral() string { return dfe.Token.Literal }
+func (dfe *DbFindExpression) String() string {
+	var out bytes.Buffer
+	out.WriteString("db.find(")
+	out.WriteString(dfe.Model.String())
+	out.WriteString(") { ")
+	for i, cond := range dfe.Conditions {
+		if i > 0 {
+			out.WriteString("; ")
+		}
+		out.WriteString(cond.String())
+	}
+	out.WriteString(" }")
+	if dfe.Modifiers != nil {
+		out.WriteString(" ")
+		out.WriteString(dfe.Modifiers.String())
+	}
+	return out.String()
+}
+
+// QueryCondition represents a condition in a database query
+type QueryCondition struct {
+	Field    Expression // Field access expression (this.x or this.center.x)
+	Operator string     // Comparison operator (">", "==", etc.)
+	Value    Expression // Value to compare against
+	LogicOp  string     // Logical operator ("&&" for AND, "||" for OR, "" for first condition)
+}
+
+func (qc *QueryCondition) String() string {
+	var out bytes.Buffer
+	if qc.LogicOp != "" {
+		out.WriteString(qc.LogicOp)
+		out.WriteString(" ")
+	}
+	out.WriteString(qc.Field.String())
+	out.WriteString(" ")
+	out.WriteString(qc.Operator)
+	out.WriteString(" ")
+	out.WriteString(qc.Value.String())
+	return out.String()
+}
+
+// QueryModifiers represents modifiers for a database query
+type QueryModifiers struct {
+	OrderBy   string     // Field to order by
+	OrderDesc bool       // Order descending?
+	Limit     Expression // Limit count
+	Offset    Expression // Offset count
+	First     bool       // Return first result only
+	Count     bool       // Return count instead of results
+}
+
+func (qm *QueryModifiers) String() string {
+	var out bytes.Buffer
+	if qm.OrderBy != "" {
+		out.WriteString("orderBy ")
+		out.WriteString(qm.OrderBy)
+		if qm.OrderDesc {
+			out.WriteString(" desc")
+		}
+		out.WriteString(" ")
+	}
+	if qm.Limit != nil {
+		out.WriteString("limit ")
+		out.WriteString(qm.Limit.String())
+		out.WriteString(" ")
+	}
+	if qm.Offset != nil {
+		out.WriteString("offset ")
+		out.WriteString(qm.Offset.String())
+		out.WriteString(" ")
+	}
+	if qm.First {
+		out.WriteString("first ")
+	}
+	if qm.Count {
+		out.WriteString("count ")
+	}
+	return strings.TrimSpace(out.String())
+}

@@ -178,7 +178,7 @@ func Eval(node ast.Node, env *Environment) Object {
 		if len(args) == 1 && IsError(args[0]) {
 			return args[0]
 		}
-		return applyFunction(function, args)
+		return applyFunction(function, args, env)
 
 	case *ast.ArrayLiteral:
 		elements := evalExpressions(node.Elements, env)
@@ -221,6 +221,9 @@ func Eval(node ast.Node, env *Environment) Object {
 
 	case *ast.ThisExpression:
 		return evalThisExpression(env)
+
+	case *ast.DbFindExpression:
+		return evalDbFindExpression(node, env)
 	}
 
 	return nil
@@ -866,7 +869,7 @@ func evalExpressions(exps []ast.Expression, env *Environment) []Object {
 	return result
 }
 
-func applyFunction(fn Object, args []Object) Object {
+func applyFunction(fn Object, args []Object, callingEnv *Environment) Object {
 	switch fn := fn.(type) {
 	case *Function:
 		if len(args) != len(fn.Parameters) {
@@ -877,7 +880,7 @@ func applyFunction(fn Object, args []Object) Object {
 		// Validate parameter types if annotations are present and coerce if needed
 		for i, param := range fn.Parameters {
 			if param.Type != nil {
-				if err := validateType(args[i], param.Type, fn.Env); err != nil {
+				if err := validateType(args[i], param.Type, callingEnv); err != nil {
 					errObj, ok := err.(*Error)
 					if !ok {
 						return newError("unexpected error type in parameter validation")
@@ -910,7 +913,7 @@ func applyFunction(fn Object, args []Object) Object {
 				// Validate parameter types if annotations are present and coerce if needed
 				for i, param := range constructor.Parameters {
 					if param.Type != nil {
-						if err := validateType(args[i], param.Type, constructor.Env); err != nil {
+						if err := validateType(args[i], param.Type, callingEnv); err != nil {
 							errObj, ok := err.(*Error)
 							if !ok {
 								return newError("unexpected error type in constructor parameter validation")
@@ -945,24 +948,11 @@ func applyFunction(fn Object, args []Object) Object {
 		}
 
 		// Assign arguments to fields in order, validating types
-		// Get environment from first constructor or method, or create new one
-		var env *Environment
-		if len(fn.Constructors) > 0 {
-			env = fn.Constructors[0].Env
-		} else {
-			for _, method := range fn.Methods {
-				env = method.Env
-				break
-			}
-		}
-		if env == nil {
-			env = NewEnvironment()
-		}
-
+		// Use calling environment for type validation so user-defined types are accessible
 		for i, fieldName := range fn.FieldNames {
 			// Validate field type if annotation is present
 			if fieldType, ok := fn.Fields[fieldName]; ok && fieldType != nil {
-				if err := validateType(args[i], fieldType, env); err != nil {
+				if err := validateType(args[i], fieldType, callingEnv); err != nil {
 					errObj, ok := err.(*Error)
 					if !ok {
 						return newError("unexpected error type in field validation")
@@ -1389,15 +1379,19 @@ func evalModelLiteral(node *ast.ModelLiteral, env *Environment) Object {
 		Name:         "", // Name will be set when assigned to a variable
 		FieldNames:   make([]string, 0, len(node.Fields)),
 		Fields:       make(map[string]*ast.TypeExpression),
+		Annotations:  make(map[string][]string),
 		Methods:      make(map[string]*Function),
 		Constructors: make([]*Function, 0),
 	}
 
-	// Store field type information in order
+	// Store field type information and annotations in order
 	for _, field := range node.Fields {
 		fieldName := field.Name.Value
 		model.FieldNames = append(model.FieldNames, fieldName)
 		model.Fields[fieldName] = field.Type
+		if len(field.Annotations) > 0 {
+			model.Annotations[fieldName] = field.Annotations
+		}
 	}
 
 	// Store constructors
@@ -1502,5 +1496,317 @@ func evalIsOperator(left, right Object) Object {
 
 	default:
 		return newError("'is' operator requires a type name or type value on the right side")
+	}
+}
+
+func evalDbFindExpression(node *ast.DbFindExpression, env *Environment) Object {
+	// Get db module from environment
+	dbModule, exists := env.Get("db")
+	if !exists || dbModule == nil {
+		return newError("db module not imported")
+	}
+
+	module, ok := dbModule.(*Module)
+	if !ok {
+		return newError("db is not a module")
+	}
+
+	// Get database state from module scope
+	stateWrapper, exists := module.Scope.Get("__db_state__")
+	if !exists || stateWrapper == nil {
+		return newError("database state not found - db module may not be properly initialized")
+	}
+
+	wrapper, ok := stateWrapper.(*DBStateWrapper)
+	if !ok {
+		return newError("invalid database state")
+	}
+	state := wrapper.State
+
+	// Ensure database is open
+	state.mu.Lock()
+	defer state.mu.Unlock()
+	if err := state.ensureOpen(); err != nil {
+		return newError("database error: %s", err.Error())
+	}
+
+	// Evaluate model expression
+	modelObj := Eval(node.Model, env)
+	if IsError(modelObj) {
+		return modelObj
+	}
+
+	model, ok := modelObj.(*Model)
+	if !ok {
+		return newError("db.find() requires a model type, got %s", modelObj.Type())
+	}
+
+	// Build and execute SQL query
+	sql := "SELECT DISTINCT entity_id FROM data WHERE model_type = ?"
+	args := []interface{}{model.Name}
+
+	// Add conditions to query
+	for i, cond := range node.Conditions {
+		// Evaluate the condition value
+		value := Eval(cond.Value, env)
+		if IsError(value) {
+			return value
+		}
+
+		// Extract field path from condition
+		fieldPath := extractFieldPath(cond.Field)
+		operator := translateOperator(cond.Operator)
+
+		// Determine if we need numeric casting for comparison
+		fieldExpr := "field_value"
+		if _, ok := value.(*Integer); ok {
+			fieldExpr = "CAST(field_value AS REAL)"
+		} else if _, ok := value.(*Float); ok {
+			fieldExpr = "CAST(field_value AS REAL)"
+		}
+
+		// Build subquery for this condition
+		subquery := fmt.Sprintf("(SELECT entity_id FROM data WHERE model_type = ? AND field_name = ? AND %s %s ?)", fieldExpr, operator)
+		if i > 0 {
+			if cond.LogicOp == "||" {
+				sql += " OR entity_id IN " + subquery
+			} else {
+				sql += " AND entity_id IN " + subquery
+			}
+		} else {
+			sql += " AND entity_id IN " + subquery
+		}
+		args = append(args, model.Name, fieldPath, serializeForQuery(value))
+	}
+
+	// Execute query to get entity IDs
+	rows, err := state.db.Query(sql, args...)
+	if err != nil {
+		return newError("query error: %s", err.Error())
+	}
+	defer rows.Close()
+
+	// Collect entity IDs
+	entityIDs := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return newError("scan error: %s", err.Error())
+		}
+		entityIDs = append(entityIDs, id)
+	}
+
+	// Handle query modifiers
+	if node.Modifiers != nil {
+		if node.Modifiers.Count {
+			return &Integer{Value: int64(len(entityIDs))}
+		}
+	}
+
+	// Load full instances
+	results := &Array{Elements: []Object{}}
+	for _, id := range entityIDs {
+		instance := loadInstance(state, model, id)
+		if IsError(instance) {
+			return instance
+		}
+		results.Elements = append(results.Elements, instance)
+	}
+
+	// Apply modifiers
+	if node.Modifiers != nil {
+		// orderBy sorting
+		if node.Modifiers.OrderBy != "" {
+			sortInstances(results, node.Modifiers.OrderBy, node.Modifiers.OrderDesc)
+		}
+
+		// offset and limit
+		if node.Modifiers.Offset != nil {
+			offset := Eval(node.Modifiers.Offset, env)
+			if IsError(offset) {
+				return offset
+			}
+			offsetInt, ok := offset.(*Integer)
+			if !ok {
+				return newError("offset must be an integer")
+			}
+			offsetVal := int(offsetInt.Value)
+			if offsetVal < 0 || offsetVal >= len(results.Elements) {
+				results.Elements = []Object{}
+			} else {
+				results.Elements = results.Elements[offsetVal:]
+			}
+		}
+
+		if node.Modifiers.Limit != nil {
+			limit := Eval(node.Modifiers.Limit, env)
+			if IsError(limit) {
+				return limit
+			}
+			limitInt, ok := limit.(*Integer)
+			if !ok {
+				return newError("limit must be an integer")
+			}
+			limitVal := int(limitInt.Value)
+			if limitVal > 0 && limitVal < len(results.Elements) {
+				results.Elements = results.Elements[:limitVal]
+			}
+		}
+
+		// first modifier - return single result or null
+		if node.Modifiers.First {
+			if len(results.Elements) == 0 {
+				return NULL
+			}
+			return results.Elements[0]
+		}
+	}
+
+	return results
+}
+
+// extractFieldPath extracts the field path from a query condition expression.
+// For "this.x" returns "x", for "this.center.x" returns "center" (top-level field).
+func extractFieldPath(expr ast.Expression) string {
+	switch e := expr.(type) {
+	case *ast.MemberExpression:
+		// Handle this.field
+		if ident, ok := e.Object.(*ast.Identifier); ok && ident.Value == "this" {
+			return e.Member.Value
+		}
+		// For nested fields like this.center.x, just return the top-level field
+		if mem, ok := e.Object.(*ast.MemberExpression); ok {
+			return extractFieldPath(mem)
+		}
+		return e.Member.Value
+	case *ast.Identifier:
+		return e.Value
+	default:
+		return ""
+	}
+}
+
+// translateOperator converts TotalScript comparison operators to SQL operators.
+func translateOperator(op string) string {
+	switch op {
+	case "==":
+		return "="
+	case "!=":
+		return "!="
+	case ">":
+		return ">"
+	case ">=":
+		return ">="
+	case "<":
+		return "<"
+	case "<=":
+		return "<="
+	default:
+		return "="
+	}
+}
+
+// serializeForQuery converts a TotalScript object to a string value for SQL queries.
+func serializeForQuery(obj Object) string {
+	switch v := obj.(type) {
+	case *Integer:
+		return fmt.Sprintf("%d", v.Value)
+	case *Float:
+		return fmt.Sprintf("%f", v.Value)
+	case *String:
+		return v.Value
+	case *Boolean:
+		if v.Value {
+			return "true"
+		}
+		return "false"
+	case *Null:
+		return ""
+	default:
+		return obj.Inspect()
+	}
+}
+
+// loadInstance loads a model instance from the database by entity ID.
+func loadInstance(state *DBState, model *Model, entityID string) Object {
+	instance := &ModelInstance{
+		Model:  model,
+		Fields: make(map[string]Object),
+	}
+
+	rows, err := state.db.Query(
+		"SELECT field_name, field_value, field_type FROM data WHERE entity_id = ?",
+		entityID,
+	)
+	if err != nil {
+		return newError("failed to load instance: %s", err.Error())
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var fieldName, fieldValue, fieldType string
+		if err := rows.Scan(&fieldName, &fieldValue, &fieldType); err != nil {
+			return newError("failed to scan field: %s", err.Error())
+		}
+		instance.Fields[fieldName] = deserializeDBValue(fieldValue, fieldType)
+	}
+
+	// Store entity_id for future operations
+	instance.Fields["_entity_id"] = &String{Value: entityID}
+
+	return instance
+}
+
+// sortInstances sorts an array of model instances by a field name.
+func sortInstances(arr *Array, fieldName string, descending bool) {
+	// Simple bubble sort for now
+	n := len(arr.Elements)
+	for i := 0; i < n-1; i++ {
+		for j := 0; j < n-i-1; j++ {
+			inst1, ok1 := arr.Elements[j].(*ModelInstance)
+			inst2, ok2 := arr.Elements[j+1].(*ModelInstance)
+			if !ok1 || !ok2 {
+				continue
+			}
+
+			val1, exists1 := inst1.Fields[fieldName]
+			val2, exists2 := inst2.Fields[fieldName]
+			if !exists1 || !exists2 {
+				continue
+			}
+
+			shouldSwap := false
+			// Compare values
+			switch v1 := val1.(type) {
+			case *Integer:
+				if v2, ok := val2.(*Integer); ok {
+					if descending {
+						shouldSwap = v1.Value > v2.Value
+					} else {
+						shouldSwap = v1.Value < v2.Value
+					}
+				}
+			case *Float:
+				if v2, ok := val2.(*Float); ok {
+					if descending {
+						shouldSwap = v1.Value > v2.Value
+					} else {
+						shouldSwap = v1.Value < v2.Value
+					}
+				}
+			case *String:
+				if v2, ok := val2.(*String); ok {
+					if descending {
+						shouldSwap = v1.Value > v2.Value
+					} else {
+						shouldSwap = v1.Value < v2.Value
+					}
+				}
+			}
+
+			if shouldSwap {
+				arr.Elements[j], arr.Elements[j+1] = arr.Elements[j+1], arr.Elements[j]
+			}
+		}
 	}
 }

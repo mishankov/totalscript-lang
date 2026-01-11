@@ -15,25 +15,26 @@ type ObjectType string
 // ObjectType constants define all runtime value types.
 const (
 	// INTEGER_OBJ represents an integer value.
-	INTEGER_OBJ        ObjectType = "INTEGER"
-	FLOAT_OBJ          ObjectType = "FLOAT"
-	STRING_OBJ         ObjectType = "STRING"
-	BOOLEAN_OBJ        ObjectType = "BOOLEAN"
-	NULL_OBJ           ObjectType = "NULL"
-	RETURN_VALUE_OBJ   ObjectType = "RETURN_VALUE"
-	ERROR_OBJ          ObjectType = "ERROR"
-	FUNCTION_OBJ       ObjectType = "FUNCTION"
-	ARRAY_OBJ          ObjectType = "ARRAY"
-	MAP_OBJ            ObjectType = "MAP"
-	BREAK_OBJ          ObjectType = "BREAK"
-	CONTINUE_OBJ       ObjectType = "CONTINUE"
-	BUILTIN_OBJ        ObjectType = "BUILTIN"
-	BOUND_METHOD_OBJ   ObjectType = "BOUND_METHOD"
-	MODEL_OBJ          ObjectType = "MODEL"
-	MODEL_INSTANCE_OBJ ObjectType = "MODEL_INSTANCE"
-	ENUM_OBJ           ObjectType = "ENUM"
-	ENUM_VALUE_OBJ     ObjectType = "ENUM_VALUE"
-	MODULE_OBJ         ObjectType = "MODULE"
+	INTEGER_OBJ          ObjectType = "INTEGER"
+	FLOAT_OBJ            ObjectType = "FLOAT"
+	STRING_OBJ           ObjectType = "STRING"
+	BOOLEAN_OBJ          ObjectType = "BOOLEAN"
+	NULL_OBJ             ObjectType = "NULL"
+	RETURN_VALUE_OBJ     ObjectType = "RETURN_VALUE"
+	ERROR_OBJ            ObjectType = "ERROR"
+	FUNCTION_OBJ         ObjectType = "FUNCTION"
+	ARRAY_OBJ            ObjectType = "ARRAY"
+	MAP_OBJ              ObjectType = "MAP"
+	BREAK_OBJ            ObjectType = "BREAK"
+	CONTINUE_OBJ         ObjectType = "CONTINUE"
+	BUILTIN_OBJ          ObjectType = "BUILTIN"
+	BOUND_METHOD_OBJ     ObjectType = "BOUND_METHOD"
+	MODEL_OBJ            ObjectType = "MODEL"
+	MODEL_INSTANCE_OBJ   ObjectType = "MODEL_INSTANCE"
+	ENUM_OBJ             ObjectType = "ENUM"
+	ENUM_VALUE_OBJ       ObjectType = "ENUM_VALUE"
+	MODULE_OBJ           ObjectType = "MODULE"
+	DB_STATE_WRAPPER_OBJ ObjectType = "DB_STATE_WRAPPER"
 )
 
 // Object is the interface for all runtime values.
@@ -229,6 +230,7 @@ type Model struct {
 	Name         string
 	FieldNames   []string                       // Maintains field order
 	Fields       map[string]*ast.TypeExpression // Quick field lookup
+	Annotations  map[string][]string            // Field annotations (e.g., ["id"] for @id)
 	Methods      map[string]*Function
 	Constructors []*Function // Custom constructors
 }
@@ -288,3 +290,12 @@ type Module struct {
 
 func (m *Module) Type() ObjectType { return MODULE_OBJ }
 func (m *Module) Inspect() string  { return "module " + m.Name }
+
+// DBStateWrapper wraps a database state for use in query execution.
+// This is an internal type used to pass database state to db.find() evaluation.
+type DBStateWrapper struct {
+	State *DBState
+}
+
+func (w *DBStateWrapper) Type() ObjectType { return DB_STATE_WRAPPER_OBJ }
+func (w *DBStateWrapper) Inspect() string  { return "<db state>" }

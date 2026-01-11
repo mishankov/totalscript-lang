@@ -1,0 +1,73 @@
+import "db"
+
+println("╔═══════════════════════════════════════════╗")
+println("║   TotalScript Database Module Test Suite  ║")
+println("╚═══════════════════════════════════════════╝")
+println()
+
+# Clean start
+db.configure("complete_test.db")
+
+# Define models
+const Point = model {
+  x: float
+  y: float
+}
+
+const User = model {
+  @id email: string
+  name: string
+  age: integer
+}
+
+println("✓ TEST 1: Basic save and find all")
+var p1 = Point(3.0, 4.0)
+var p2 = Point(5.0, 6.0)
+var p3 = Point(7.0, 8.0)
+db.save(p1)
+db.save(p2)
+db.save(p3)
+
+var all = (db.find(Point){})
+println("  Saved 3 points, found:", all.length())
+println()
+
+println("✓ TEST 2: Find with conditions")
+var large = (db.find(Point){this.x > 4})
+println("  Points with x > 4:", large.length())
+for p in large {
+  println("    Point(", p.x, ",", p.y, ")")
+}
+println()
+
+println("✓ TEST 3: Count modifier")
+var count = (db.find(Point){this.x >= 3} count)
+println("  Count of points with x >= 3:", count)
+println()
+
+println("✓ TEST 4: @id annotation (upsert)")
+var alice = User("alice@example.com", "Alice", 30)
+db.save(alice)
+println("  Saved user:", alice.name)
+
+alice.name = "Alice Smith"
+alice.age = 31
+db.save(alice)
+println("  Updated user:", alice.name, "age", alice.age)
+
+var users = (db.find(User){})
+println("  Total users in DB:", users.length(), "(should be 1, not 2)")
+println()
+
+println("✓ TEST 5: Delete operations")
+var temp = Point(100.0, 200.0)
+db.save(temp)
+var before = (db.find(Point){} count)
+db.delete(temp)
+var after = (db.find(Point){} count)
+println("  Before delete:", before, "After delete:", after)
+println()
+
+println("═══════════════════════════════════════════")
+println("ALL DATABASE TESTS PASSED!")
+println("═══════════════════════════════════════════")

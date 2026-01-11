@@ -99,6 +99,14 @@ const (
 	FALSE       TokenType = "FALSE"
 	NULL        TokenType = "NULL"
 	CONSTRUCTOR TokenType = "CONSTRUCTOR"
+
+	// Database query modifiers
+	ORDERBY TokenType = "ORDERBY"
+	LIMIT   TokenType = "LIMIT"
+	OFFSET  TokenType = "OFFSET"
+	FIRST   TokenType = "FIRST"
+	COUNT   TokenType = "COUNT"
+	DESC    TokenType = "DESC"
 )
 
 // keywords maps keyword strings to their token types.
@@ -127,6 +135,10 @@ var keywords = map[string]TokenType{
 	"false":       FALSE,
 	"null":        NULL,
 	"constructor": CONSTRUCTOR,
+	"orderBy":     ORDERBY,
+	"limit":       LIMIT,
+	"offset":      OFFSET,
+	"desc":        DESC,
 }
 
 // LookupIdent checks if the given identifier is a keyword.

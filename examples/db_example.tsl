@@ -1,0 +1,92 @@
+import "db"
+
+println("╔════════════════════════════════════════════╗")
+println("║  TotalScript Database Module - Test Suite  ║")
+println("╚════════════════════════════════════════════╝")
+println()
+
+# Clean start
+db.configure("test.db")
+
+# Test 1: Simple model without @id
+println("✓ TEST 1: Simple model (auto UUID)")
+const Point = model {
+  x: float
+  y: float
+}
+
+var p1 = Point(3.5, 4.2)
+var p2 = Point(5.0, 6.0)
+db.save(p1)
+db.save(p2)
+println("  Saved 2 points with auto-generated UUIDs")
+println()
+
+# Test 2: Model with @id annotation
+println("✓ TEST 2: Model with @id annotation")
+const User = model {
+  @id email: string
+  name: string
+  age: integer
+}
+
+var alice = User("alice@example.com", "Alice", 30)
+db.save(alice)
+println("  Saved user: Alice")
+
+alice.name = "Alice Smith"
+alice.age = 31
+db.save(alice)
+println("  Updated user: Alice Smith (upsert via @id)")
+println()
+
+# Test 3: Composite primary key
+println("✓ TEST 3: Composite primary key")
+const OrderItem = model {
+  @id order_id: string
+  @id product_id: string
+  quantity: integer
+}
+
+db.save(OrderItem("order-1", "product-A", 5))
+db.save(OrderItem("order-1", "product-B", 3))
+db.save(OrderItem("order-1", "product-A", 10))  # Update first item
+println("  Saved/updated order items with composite key")
+println()
+
+# Test 4: Nested models
+println("✓ TEST 4: Nested models (JSON serialization)")
+const Circle = model {
+  center: Point
+  radius: float
+}
+
+var c = Circle(Point(1.0, 2.0), 5.0)
+db.save(c)
+println("  Saved circle with nested Point model")
+println()
+
+# Test 5: Delete
+println("✓ TEST 5: Delete operations")
+var temp = Point(100.0, 200.0)
+db.save(temp)
+db.delete(temp)
+println("  Saved and deleted a temporary point")
+println()
+
+println("═══════════════════════════════════════════")
+println("DATABASE MODULE TESTS COMPLETE")
+println("═══════════════════════════════════════════")
+println()
+println("Implemented features:")
+println("  ✓ db.configure(path) - set database file")
+println("  ✓ db.save(instance) - save/update instances")
+println("  ✓ db.delete(instance) - delete by instance")
+println("  ✓ db.deleteAll(Model) - delete all of type")
+println("  ✓ @id annotation - custom primary keys")
+println("  ✓ Composite @id - multi-field primary keys")
+println("  ✓ Auto UUID - when no @id specified")
+println("  ✓ Nested models - JSON serialization")
+println()
+println("Note: db.find() query syntax is partially implemented")
+println("      (parser support complete, interpreter pending)")

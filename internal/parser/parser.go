@@ -755,6 +755,19 @@ func (p *Parser) parseFunctionParameters() []*ast.Parameter {
 func (p *Parser) parseCallExpression(function ast.Expression) ast.Expression {
 	exp := &ast.CallExpression{Token: p.curToken, Function: function}
 	exp.Arguments = p.parseExpressionList(token.RPAREN)
+
+	// Check if this is a db.find() call followed by { } for query syntax
+	if mem, ok := function.(*ast.MemberExpression); ok {
+		if ident, ok := mem.Object.(*ast.Identifier); ok {
+			if ident.Value == "db" && mem.Member.Value == "find" {
+				// Check if next token is {
+				if p.peekTokenIs(token.LBRACE) {
+					return p.parseDbFindExpression(exp)
+				}
+			}
+		}
+	}
+
 	return exp
 }
 
@@ -983,6 +996,19 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 	p.nextToken()
 
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		// Collect annotations before field/method/constructor
+		annotations := []string{}
+		for p.curTokenIs(token.AT) {
+			p.nextToken() // consume @
+			if !p.curTokenIs(token.IDENT) {
+				msg := "expected annotation name after @"
+				p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+				return nil
+			}
+			annotations = append(annotations, p.curToken.Literal)
+			p.nextToken() // consume annotation name
+		}
+
 		// Parse field, method, or constructor
 		if !p.curTokenIs(token.IDENT) && !p.curTokenIs(token.CONSTRUCTOR) {
 			msg := "expected field, method, or constructor name in model"
@@ -1059,8 +1085,9 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 			}
 
 			field := &ast.ModelField{
-				Name: name,
-				Type: typeExpr,
+				Annotations: annotations,
+				Name:        name,
+				Type:        typeExpr,
 			}
 			model.Fields = append(model.Fields, field)
 
@@ -1120,4 +1147,151 @@ func (p *Parser) parseEnumLiteral() ast.Expression {
 
 func (p *Parser) parseThisExpression() ast.Expression {
 	return &ast.ThisExpression{Token: p.curToken}
+}
+
+func (p *Parser) parseDbFindExpression(callExpr *ast.CallExpression) ast.Expression {
+	dbFind := &ast.DbFindExpression{
+		Token:      callExpr.Token,
+		Conditions: []*ast.QueryCondition{},
+	}
+
+	// Get model from call expression arguments
+	if len(callExpr.Arguments) != 1 {
+		msg := "db.find() requires exactly 1 argument (model type)"
+		p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+		return nil
+	}
+	dbFind.Model = callExpr.Arguments[0]
+
+	// Expect and consume {
+	if !p.expectPeek(token.LBRACE) {
+		return nil
+	}
+	p.nextToken() // move past {
+
+	// Parse conditions until }
+	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
+		cond := p.parseQueryCondition()
+		if cond == nil {
+			return nil
+		}
+		dbFind.Conditions = append(dbFind.Conditions, cond)
+
+		// Optionally consume semicolon or newline between conditions
+		if p.curTokenIs(token.SEMICOLON) {
+			p.nextToken()
+		} else if p.curTokenIs(token.RBRACE) {
+			break
+		} else {
+			p.nextToken() // Move to next condition
+		}
+	}
+
+	if !p.curTokenIs(token.RBRACE) {
+		msg := "expected '}' after query conditions"
+		p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+		return nil
+	}
+
+	// Parse modifiers (peeks ahead while at })
+	dbFind.Modifiers = p.parseQueryModifiers()
+
+	// Ensure we've advanced past the closing } if we're still there
+	// (parseQueryModifiers may leave us at } if no modifiers found)
+	if p.curTokenIs(token.RBRACE) {
+		// Don't advance - let the statement parser handle it
+		// This maintains consistency with other expression parsers
+	}
+
+	return dbFind
+}
+
+func (p *Parser) parseQueryCondition() *ast.QueryCondition {
+	cond := &ast.QueryCondition{}
+
+	// Check for logical operator (|| for OR, otherwise AND)
+	if p.curTokenIs(token.OR) {
+		cond.LogicOp = "||"
+		p.nextToken()
+	}
+
+	// Parse field access (should be this.field or this.field.nested)
+	if !p.curTokenIs(token.THIS) {
+		msg := "query condition must start with 'this'"
+		p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+		return nil
+	}
+
+	// Parse the full comparison expression (this.x > 4)
+	fullExpr := p.parseExpression(LOWEST)
+
+	// The result should be an InfixExpression with a comparison operator
+	infixExpr, ok := fullExpr.(*ast.InfixExpression)
+	if !ok {
+		msg := "query condition must be a comparison expression"
+		p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+		return nil
+	}
+
+	// Extract the parts
+	cond.Field = infixExpr.Left
+	cond.Operator = infixExpr.Operator
+	cond.Value = infixExpr.Right
+
+	return cond
+}
+
+func (p *Parser) parseQueryModifiers() *ast.QueryModifiers {
+	mods := &ast.QueryModifiers{}
+
+	// Keep parsing modifiers while we see modifier keywords
+	// Note: curToken is at } when this is called
+	for {
+		// Peek at next token to see if it's a modifier
+		// For IDENT, we need to check if it's specifically "first" or "count"
+		isModifier := p.peekTokenIs(token.ORDERBY) || p.peekTokenIs(token.LIMIT) ||
+			p.peekTokenIs(token.OFFSET) || p.peekTokenIs(token.DESC) ||
+			(p.peekTokenIs(token.IDENT) && (p.peekToken.Literal == "first" || p.peekToken.Literal == "count"))
+
+		if !isModifier {
+			// No modifier found, stop without advancing
+			return mods
+		}
+
+		p.nextToken() // Advance to the modifier token
+
+		switch p.curToken.Type {
+		case token.ORDERBY:
+			p.nextToken()
+			if !p.curTokenIs(token.IDENT) {
+				return mods
+			}
+			mods.OrderBy = p.curToken.Literal
+			// Check for desc
+			if p.peekTokenIs(token.DESC) {
+				p.nextToken()
+				mods.OrderDesc = true
+			}
+
+		case token.LIMIT:
+			p.nextToken()
+			mods.Limit = p.parseExpression(LOWEST)
+
+		case token.OFFSET:
+			p.nextToken()
+			mods.Offset = p.parseExpression(LOWEST)
+
+		case token.IDENT:
+			// Check for contextual keywords (first, count)
+			if p.curToken.Literal == "first" {
+				mods.First = true
+			} else if p.curToken.Literal == "count" {
+				mods.Count = true
+			}
+
+		default:
+			// No more modifiers, stop
+			return mods
+		}
+	}
 }
