@@ -2,6 +2,7 @@ package interpreter
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -63,7 +64,7 @@ func loadStdlibModule(name string) Object {
 	switch name {
 	case "math":
 		module = createMathModule()
-	case "json":
+	case typeNameJSON:
 		module = createJSONModule()
 	case "fs":
 		module = createFSModule()
@@ -1638,14 +1639,14 @@ func (s *DBState) ensureOpen() error {
 	}
 	db, err := sql.Open("sqlite", s.path)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open database: %w", err)
 	}
 	s.db = db
 	return s.createSchema()
 }
 
 func (s *DBState) createSchema() error {
-	_, err := s.db.Exec(`
+	_, err := s.db.ExecContext(context.Background(), `
 		CREATE TABLE IF NOT EXISTS data (
 			entity_id TEXT NOT NULL,
 			model_type TEXT NOT NULL,
@@ -1657,7 +1658,10 @@ func (s *DBState) createSchema() error {
 		CREATE INDEX IF NOT EXISTS idx_model ON data(model_type);
 		CREATE INDEX IF NOT EXISTS idx_field ON data(model_type, field_name, field_value);
 	`)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to create database schema: %w", err)
+	}
+	return nil
 }
 
 func createDBConfigureFunc(state *DBState) *Builtin {
@@ -1674,8 +1678,7 @@ func createDBConfigureFunc(state *DBState) *Builtin {
 			state.mu.Lock()
 			defer state.mu.Unlock()
 			if state.db != nil {
-				//nolint:errcheck
-				state.db.Close()
+				_ = state.db.Close()
 				state.db = nil
 			}
 			state.path = path.Value
@@ -1707,8 +1710,7 @@ func createDBSaveFunc(state *DBState) *Builtin {
 			entityID := getOrCreateEntityID(state, instance)
 
 			// Delete existing rows for this entity (for updates)
-			//nolint:errcheck
-			state.execer().Exec("DELETE FROM data WHERE entity_id = ?", entityID)
+			_, _ = state.execer().Exec("DELETE FROM data WHERE entity_id = ?", entityID)
 
 			// Insert all fields
 			for fieldName, value := range instance.Fields {
@@ -1767,8 +1769,7 @@ func createDBSaveAllFunc(state *DBState) *Builtin {
 				entityID := getOrCreateEntityID(state, instance)
 
 				// Delete existing rows for this entity (for updates)
-				//nolint:errcheck
-				state.execer().Exec("DELETE FROM data WHERE entity_id = ?", entityID)
+				_, _ = state.execer().Exec("DELETE FROM data WHERE entity_id = ?", entityID)
 
 				// Insert all fields
 				for fieldName, value := range instance.Fields {
@@ -1800,11 +1801,11 @@ func createDBSaveAllFunc(state *DBState) *Builtin {
 
 func getOrCreateEntityID(state *DBState, instance *ModelInstance) string {
 	// Check for @id annotated fields
-	idFields := getIdFields(instance.Model)
+	idFields := getIDFields(instance.Model)
 
 	if len(idFields) > 0 {
 		// Try to find existing entity by @id field values
-		existingID := findEntityByIdFields(state, instance, idFields)
+		existingID := findEntityByIDFields(state, instance, idFields)
 		if existingID != "" {
 			return existingID // Update existing
 		}
@@ -1814,7 +1815,7 @@ func getOrCreateEntityID(state *DBState, instance *ModelInstance) string {
 	return uuid.New().String()
 }
 
-func getIdFields(model *Model) []string {
+func getIDFields(model *Model) []string {
 	idFields := []string{}
 	for _, fieldName := range model.FieldNames {
 		if annotations, ok := model.Annotations[fieldName]; ok {
@@ -1829,7 +1830,7 @@ func getIdFields(model *Model) []string {
 	return idFields
 }
 
-func findEntityByIdFields(state *DBState, instance *ModelInstance, idFields []string) string {
+func findEntityByIDFields(state *DBState, instance *ModelInstance, idFields []string) string {
 	if len(idFields) == 0 {
 		return ""
 	}
@@ -1857,24 +1858,24 @@ func findEntityByIdFields(state *DBState, instance *ModelInstance, idFields []st
 func serializeDBValue(obj Object) (string, string) {
 	switch v := obj.(type) {
 	case *Integer:
-		return strconv.FormatInt(v.Value, 10), "integer"
+		return strconv.FormatInt(v.Value, 10), typeNameInteger
 	case *Float:
-		return strconv.FormatFloat(v.Value, 'f', -1, 64), "float"
+		return strconv.FormatFloat(v.Value, 'f', -1, 64), typeNameFloat
 	case *String:
-		return v.Value, "string"
+		return v.Value, typeNameString
 	case *Boolean:
 		if v.Value {
-			return "true", "boolean"
+			return stringTrue, typeNameBoolean
 		}
-		return "false", "boolean"
+		return stringFalse, typeNameBoolean
 	case *Null:
-		return "", "null"
+		return "", typeNameNull
 	case *ModelInstance, *Array, *Map:
 		// Serialize as JSON
 		jsonBytes, _ := json.Marshal(convertObjectToGo(v))
-		return string(jsonBytes), "json"
+		return string(jsonBytes), typeNameJSON
 	default:
-		return obj.Inspect(), "string"
+		return obj.Inspect(), typeNameString
 	}
 }
 
@@ -1990,7 +1991,7 @@ func createDBTransactionFunc(state *DBState) *Builtin {
 				return &Error{Message: err.Error()}
 			}
 
-			tx, err := state.db.Begin()
+			tx, err := state.db.BeginTx(context.Background(), nil)
 			if err != nil {
 				state.mu.Unlock()
 				return &Error{Message: err.Error()}
@@ -2017,8 +2018,7 @@ func createDBTransactionFunc(state *DBState) *Builtin {
 
 			// Check if function returned an error
 			if IsError(result) {
-				//nolint:errcheck
-				tx.Rollback()
+				_ = tx.Rollback()
 				return result
 			}
 

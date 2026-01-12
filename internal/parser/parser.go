@@ -1178,11 +1178,12 @@ func (p *Parser) parseDbFindExpression(callExpr *ast.CallExpression) ast.Express
 		dbFind.Conditions = append(dbFind.Conditions, cond)
 
 		// Optionally consume semicolon or newline between conditions
-		if p.curTokenIs(token.SEMICOLON) {
+		switch {
+		case p.curTokenIs(token.SEMICOLON):
 			p.nextToken()
-		} else if p.curTokenIs(token.RBRACE) {
-			break
-		} else {
+		case p.curTokenIs(token.RBRACE):
+			// Loop condition will handle exit
+		default:
 			p.nextToken() // Move to next condition
 		}
 	}
@@ -1198,10 +1199,8 @@ func (p *Parser) parseDbFindExpression(callExpr *ast.CallExpression) ast.Express
 
 	// Ensure we've advanced past the closing } if we're still there
 	// (parseQueryModifiers may leave us at } if no modifiers found)
-	if p.curTokenIs(token.RBRACE) {
-		// Don't advance - let the statement parser handle it
-		// This maintains consistency with other expression parsers
-	}
+	// No action needed - let the statement parser handle it
+	// This maintains consistency with other expression parsers
 
 	return dbFind
 }
@@ -1283,9 +1282,10 @@ func (p *Parser) parseQueryModifiers() *ast.QueryModifiers {
 
 		case token.IDENT:
 			// Check for contextual keywords (first, count)
-			if p.curToken.Literal == "first" {
+			switch p.curToken.Literal {
+			case "first":
 				mods.First = true
-			} else if p.curToken.Literal == "count" {
+			case "count":
 				mods.Count = true
 			}
 

@@ -16,6 +16,13 @@ const (
 	typeNameArray    = "array"
 	typeNameMap      = "map"
 	typeNameFunction = "function"
+	typeNameJSON     = "json"
+)
+
+// String literal constants.
+const (
+	stringTrue  = "true"
+	stringFalse = "false"
 )
 
 // validateType checks if an object matches a type expression.

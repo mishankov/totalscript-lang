@@ -1447,21 +1447,21 @@ func evalThisExpression(env *Environment) Object {
 func evalIsOperatorWithTypeName(left Object, typeName string, env *Environment) Object {
 	// Check for built-in type names first
 	switch typeName {
-	case "integer":
+	case typeNameInteger:
 		return nativeBoolToBooleanObject(left.Type() == INTEGER_OBJ)
-	case "float":
+	case typeNameFloat:
 		return nativeBoolToBooleanObject(left.Type() == FLOAT_OBJ)
-	case "string":
+	case typeNameString:
 		return nativeBoolToBooleanObject(left.Type() == STRING_OBJ)
-	case "boolean":
+	case typeNameBoolean:
 		return nativeBoolToBooleanObject(left.Type() == BOOLEAN_OBJ)
-	case "null":
+	case typeNameNull:
 		return nativeBoolToBooleanObject(left.Type() == NULL_OBJ)
-	case "array":
+	case typeNameArray:
 		return nativeBoolToBooleanObject(left.Type() == ARRAY_OBJ)
-	case "map":
+	case typeNameMap:
 		return nativeBoolToBooleanObject(left.Type() == MAP_OBJ)
-	case "function":
+	case typeNameFunction:
 		return nativeBoolToBooleanObject(left.Type() == FUNCTION_OBJ)
 	}
 
@@ -1584,7 +1584,7 @@ func evalDbFindExpression(node *ast.DbFindExpression, env *Environment) Object {
 	if err != nil {
 		return newError("query error: %s", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	// Collect entity IDs
 	entityIDs := []string{}
@@ -1717,9 +1717,9 @@ func serializeForQuery(obj Object) string {
 		return v.Value
 	case *Boolean:
 		if v.Value {
-			return "true"
+			return stringTrue
 		}
-		return "false"
+		return stringFalse
 	case *Null:
 		return ""
 	default:
@@ -1741,7 +1741,7 @@ func loadInstance(state *DBState, model *Model, entityID string) Object {
 	if err != nil {
 		return newError("failed to load instance: %s", err.Error())
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	for rows.Next() {
 		var fieldName, fieldValue, fieldType string
