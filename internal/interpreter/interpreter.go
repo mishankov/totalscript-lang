@@ -3,6 +3,8 @@ package interpreter
 import (
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 
 	"github.com/mishankov/totalscript-lang/internal/ast"
 )
@@ -1542,7 +1544,8 @@ func evalDbFindExpression(node *ast.DbFindExpression, env *Environment) Object {
 	}
 
 	// Build and execute SQL query
-	sql := "SELECT DISTINCT entity_id FROM data WHERE model_type = ?"
+	var sqlBuilder strings.Builder
+	sqlBuilder.WriteString("SELECT DISTINCT entity_id FROM data WHERE model_type = ?")
 	args := []interface{}{model.Name}
 
 	// Add conditions to query
@@ -1569,15 +1572,19 @@ func evalDbFindExpression(node *ast.DbFindExpression, env *Environment) Object {
 		subquery := fmt.Sprintf("(SELECT entity_id FROM data WHERE model_type = ? AND field_name = ? AND %s %s ?)", fieldExpr, operator)
 		if i > 0 {
 			if cond.LogicOp == "||" {
-				sql += " OR entity_id IN " + subquery
+				sqlBuilder.WriteString(" OR entity_id IN ")
+				sqlBuilder.WriteString(subquery)
 			} else {
-				sql += " AND entity_id IN " + subquery
+				sqlBuilder.WriteString(" AND entity_id IN ")
+				sqlBuilder.WriteString(subquery)
 			}
 		} else {
-			sql += " AND entity_id IN " + subquery
+			sqlBuilder.WriteString(" AND entity_id IN ")
+			sqlBuilder.WriteString(subquery)
 		}
 		args = append(args, model.Name, fieldPath, serializeForQuery(value))
 	}
+	sql := sqlBuilder.String()
 
 	// Execute query to get entity IDs
 	rows, err := state.execer().Query(sql, args...)
@@ -1710,7 +1717,7 @@ func translateOperator(op string) string {
 func serializeForQuery(obj Object) string {
 	switch v := obj.(type) {
 	case *Integer:
-		return fmt.Sprintf("%d", v.Value)
+		return strconv.FormatInt(v.Value, 10)
 	case *Float:
 		return fmt.Sprintf("%f", v.Value)
 	case *String:

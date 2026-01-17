@@ -4,6 +4,7 @@ package interpreter
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/mishankov/totalscript-lang/internal/ast"
@@ -52,7 +53,7 @@ type Integer struct {
 }
 
 func (i *Integer) Type() ObjectType { return IntegerObj }
-func (i *Integer) Inspect() string  { return fmt.Sprintf("%d", i.Value) }
+func (i *Integer) Inspect() string  { return strconv.FormatInt(i.Value, 10) }
 
 // Float represents a float value.
 type Float struct {
@@ -76,7 +77,7 @@ type Boolean struct {
 }
 
 func (b *Boolean) Type() ObjectType { return BooleanObj }
-func (b *Boolean) Inspect() string  { return fmt.Sprintf("%t", b.Value) }
+func (b *Boolean) Inspect() string  { return strconv.FormatBool(b.Value) }
 
 // Null represents a null value.
 type Null struct{}

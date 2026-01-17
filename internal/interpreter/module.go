@@ -1836,16 +1836,18 @@ func findEntityByIDFields(state *DBState, instance *ModelInstance, idFields []st
 	}
 
 	// Build query to find entity where all @id fields match
-	query := "SELECT DISTINCT entity_id FROM data WHERE model_type = ?"
+	var queryBuilder strings.Builder
+	queryBuilder.WriteString("SELECT DISTINCT entity_id FROM data WHERE model_type = ?")
 	args := []interface{}{instance.Model.Name}
 
 	for _, fieldName := range idFields {
 		value := instance.Fields[fieldName]
 		fieldValue, _ := serializeDBValue(value)
-		query += " AND entity_id IN (SELECT entity_id FROM data WHERE field_name = ? AND field_value = ?)"
+		queryBuilder.WriteString(" AND entity_id IN (SELECT entity_id FROM data WHERE field_name = ? AND field_value = ?)")
 		args = append(args, fieldName, fieldValue)
 	}
-	query += " LIMIT 1"
+	queryBuilder.WriteString(" LIMIT 1")
+	query := queryBuilder.String()
 
 	var entityID string
 	row := state.execer().QueryRow(query, args...)

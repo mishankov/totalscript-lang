@@ -1,6 +1,8 @@
 package stdlib
 
 import (
+	"strings"
+
 	"github.com/mishankov/totalscript-lang/internal/interpreter"
 )
 
@@ -194,16 +196,16 @@ func arrayJoin(args ...interpreter.Object) interpreter.Object {
 	}
 
 	// Convert all elements to strings and join
-	result := ""
+	var builder strings.Builder
 	for i, element := range arr.Elements {
 		if i > 0 {
-			result += separator.Value
+			builder.WriteString(separator.Value)
 		}
 		// Convert element to string
-		result += elementToString(element)
+		builder.WriteString(elementToString(element))
 	}
 
-	return &interpreter.String{Value: result}
+	return &interpreter.String{Value: builder.String()}
 }
 
 // elementToString converts an object to its string representation

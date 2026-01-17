@@ -142,11 +142,6 @@ linters:
         linters:
           - revive
 
-      # Performance sprint optimizations not critical for MVP
-      - text: "(integer-format|bool-format)"
-        linters:
-          - perfsprint
-
       # Evaluation functions return Object interface by design
       - path: internal/interpreter/(interpreter|types)\.go
         text: "function return 'Object' interface"
