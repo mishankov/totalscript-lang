@@ -69,13 +69,13 @@ linters:
         linters:
           - dupl
           - err113
-          - forcetypeassert  # Tests can use unchecked assertions
+          - forcetypeassert # Tests can use unchecked assertions
           - goconst
           - gosec
           - nilnil
-          - perfsprint    # Performance optimizations not critical in tests
-          - testpackage   # Internal tests need access to private members
-          - unparam       # Test helper return values may not always be used
+          - perfsprint # Performance optimizations not critical in tests
+          - testpackage # Internal tests need access to private members
+          - unparam # Test helper return values may not always be used
 
       # Singleton pattern globals are intentional
       - path: internal/interpreter/object\.go
@@ -123,11 +123,6 @@ linters:
         text: "godoc should start with symbol name"
         linters:
           - godoclint
-
-      # Minor optimizations not critical for MVP
-      - text: ".*"
-        linters:
-          - prealloc
 
       # Interface method implementations don't need individual comments
       # The interfaces themselves (Node, Object) are documented with method descriptions

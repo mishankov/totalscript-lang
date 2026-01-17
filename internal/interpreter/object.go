@@ -111,7 +111,7 @@ type Function struct {
 func (f *Function) Type() ObjectType { return FunctionObj }
 func (f *Function) Inspect() string {
 	var out bytes.Buffer
-	params := []string{}
+	params := make([]string, 0, len(f.Parameters))
 	for _, p := range f.Parameters {
 		params = append(params, p.String())
 	}
@@ -153,7 +153,7 @@ type Array struct {
 func (ao *Array) Type() ObjectType { return ArrayObj }
 func (ao *Array) Inspect() string {
 	var out bytes.Buffer
-	elements := []string{}
+	elements := make([]string, 0, len(ao.Elements))
 	for _, e := range ao.Elements {
 		elements = append(elements, e.Inspect())
 	}
@@ -171,7 +171,7 @@ type Map struct {
 func (m *Map) Type() ObjectType { return MapObj }
 func (m *Map) Inspect() string {
 	var out bytes.Buffer
-	pairs := []string{}
+	pairs := make([]string, 0, len(m.Pairs))
 	for key, value := range m.Pairs {
 		pairs = append(pairs, fmt.Sprintf("%s: %s", key, value.Inspect()))
 	}

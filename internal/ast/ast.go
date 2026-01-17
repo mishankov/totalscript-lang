@@ -293,7 +293,7 @@ type CaseClause struct {
 func (cc *CaseClause) String() string {
 	var out bytes.Buffer
 	out.WriteString("case ")
-	vals := []string{}
+	vals := make([]string, 0, len(cc.Values))
 	for _, v := range cc.Values {
 		vals = append(vals, v.String())
 	}
@@ -372,7 +372,7 @@ func (al *ArrayLiteral) expressionNode()      {}
 func (al *ArrayLiteral) TokenLiteral() string { return al.Token.Literal }
 func (al *ArrayLiteral) String() string {
 	var out bytes.Buffer
-	elements := []string{}
+	elements := make([]string, 0, len(al.Elements))
 	for _, el := range al.Elements {
 		elements = append(elements, el.String())
 	}
@@ -392,7 +392,7 @@ func (ml *MapLiteral) expressionNode()      {}
 func (ml *MapLiteral) TokenLiteral() string { return ml.Token.Literal }
 func (ml *MapLiteral) String() string {
 	var out bytes.Buffer
-	pairs := []string{}
+	pairs := make([]string, 0, len(ml.Pairs))
 	for key, value := range ml.Pairs {
 		pairs = append(pairs, key.String()+": "+value.String())
 	}
@@ -475,7 +475,7 @@ func (fl *FunctionLiteral) expressionNode()      {}
 func (fl *FunctionLiteral) TokenLiteral() string { return fl.Token.Literal }
 func (fl *FunctionLiteral) String() string {
 	var out bytes.Buffer
-	params := []string{}
+	params := make([]string, 0, len(fl.Parameters))
 	for _, p := range fl.Parameters {
 		params = append(params, p.String())
 	}
@@ -519,7 +519,7 @@ func (ce *CallExpression) expressionNode()      {}
 func (ce *CallExpression) TokenLiteral() string { return ce.Token.Literal }
 func (ce *CallExpression) String() string {
 	var out bytes.Buffer
-	args := []string{}
+	args := make([]string, 0, len(ce.Arguments))
 	for _, a := range ce.Arguments {
 		args = append(args, a.String())
 	}
