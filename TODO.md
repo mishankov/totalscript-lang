@@ -1,11 +1,11 @@
-- [ ] Imports without "s. `import "math"` -> `import math`
+- [x] Imports without "s. `import "math"` -> `import math`
 
 - [x] Fix parse error for functions
 
 **FIXED!** Module-prefixed types now work correctly in function signatures.
 
 ```tsl
-import "http"
+import http
 
 var server = http.Server()
 
