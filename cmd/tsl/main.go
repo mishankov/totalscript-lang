@@ -2,10 +2,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/mishankov/totalscript-lang/internal/interpreter"
 	"github.com/mishankov/totalscript-lang/internal/lexer"
 	"github.com/mishankov/totalscript-lang/internal/parser"
@@ -14,42 +19,45 @@ import (
 
 const version = "0.1.0"
 
+var (
+	noWatch     bool
+	versionFlag bool
+	helpFlag    bool
+)
+
+func init() {
+	flag.BoolVar(&noWatch, "no-watch", false, "Disable live reloading (watch mode is enabled by default)")
+	flag.BoolVar(&versionFlag, "version", false, "Show version")
+	flag.BoolVar(&versionFlag, "v", false, "Show version (shorthand)")
+	flag.BoolVar(&helpFlag, "help", false, "Show help message")
+	flag.BoolVar(&helpFlag, "h", false, "Show help message (shorthand)")
+}
+
 func main() {
 	// Register methods for built-in types
 	stdlib.RegisterMethods()
 
-	if len(os.Args) < 2 {
-		printUsage()
-		os.Exit(1)
-	}
-
-	arg := os.Args[1]
+	flag.Parse()
 
 	// Handle flags
-	if arg == "--version" || arg == "-v" {
+	if versionFlag {
 		fmt.Printf("TotalScript %s\n", version)
 		os.Exit(0)
 	}
 
-	if arg == "--help" || arg == "-h" {
+	if helpFlag {
 		printUsage()
 		os.Exit(0)
 	}
 
-	// Run file
-	runFile(arg)
-}
+	args := flag.Args()
+	if len(args) < 1 {
+		printUsage()
+		os.Exit(1)
+	}
 
-func printUsage() {
-	fmt.Println("TotalScript - A scripting language with batteries included")
-	fmt.Println()
-	fmt.Println("Usage:")
-	fmt.Println("  tsl <file.tsl>    Run a TotalScript file")
-	fmt.Println("  tsl --version     Show version")
-	fmt.Println("  tsl --help        Show this help message")
-}
+	filename := args[0]
 
-func runFile(filename string) {
 	// Get absolute path for the file
 	absPath, err := filepath.Abs(filename)
 	if err != nil {
@@ -57,11 +65,161 @@ func runFile(filename string) {
 		os.Exit(1)
 	}
 
+	// Check if file exists
+	if _, err := os.Stat(absPath); os.IsNotExist(err) {
+		fmt.Fprintf(os.Stderr, "Error: file does not exist: %s\n", absPath)
+		os.Exit(1)
+	}
+
+	// If watch mode is disabled, just run once
+	if noWatch {
+		runFile(absPath)
+		return
+	}
+
+	// Run with live reloading
+	runWithWatch(absPath)
+}
+
+func printUsage() {
+	fmt.Println("TotalScript - A scripting language with batteries included")
+	fmt.Println()
+	fmt.Println("Usage:")
+	fmt.Println("  tsl <file.tsl>        Run a TotalScript file with live reloading")
+	fmt.Println("  tsl --no-watch <file> Run without live reloading")
+	fmt.Println("  tsl --version         Show version")
+	fmt.Println("  tsl --help            Show this help message")
+	fmt.Println()
+	fmt.Println("Flags:")
+	fmt.Println("  --no-watch    Disable live reloading (enabled by default)")
+	fmt.Println("  -v, --version Show version information")
+	fmt.Println("  -h, --help    Show this help message")
+	fmt.Println()
+	fmt.Println("Live Reloading:")
+	fmt.Println("  By default, tsl watches the main file and all imported files")
+	fmt.Println("  for changes and automatically reloads when changes are detected.")
+}
+
+func runWithWatch(absPath string) {
+	// Create file watcher
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating file watcher: %v\n", err)
+		os.Exit(1)
+	}
+	defer watcher.Close()
+
+	// Add main file to watcher
+	if err := watcher.Add(absPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Error watching file: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Set up signal handling for graceful shutdown
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
+	// Channel to debounce file changes
+	debounce := time.NewTimer(0)
+	debounce.Stop()
+
+	// Track currently watched files
+	watchedFiles := make(map[string]bool)
+	watchedFiles[absPath] = true
+
+	// Run the file initially
+	clearScreen()
+	fmt.Printf("Running %s (live reload enabled, press Ctrl+C to exit)\n", filepath.Base(absPath))
+	fmt.Println("---")
+	runFileAndUpdateWatcher(absPath, watcher, watchedFiles)
+
+	// Watch for changes
+	for {
+		select {
+		case <-sigChan:
+			// Graceful shutdown
+			fmt.Println("\nExiting...")
+			return
+
+		case event, ok := <-watcher.Events:
+			if !ok {
+				return
+			}
+
+			// Only respond to write and create events
+			if event.Op&fsnotify.Write == fsnotify.Write || event.Op&fsnotify.Create == fsnotify.Create {
+				// Debounce: reset timer on each event
+				debounce.Reset(100 * time.Millisecond)
+			}
+
+		case <-debounce.C:
+			// Debounce timer fired, reload the file
+			clearScreen()
+			fmt.Printf("File changed, reloading %s...\n", filepath.Base(absPath))
+			fmt.Println("---")
+			runFileAndUpdateWatcher(absPath, watcher, watchedFiles)
+
+		case err, ok := <-watcher.Errors:
+			if !ok {
+				return
+			}
+			fmt.Fprintf(os.Stderr, "Watcher error: %v\n", err)
+		}
+	}
+}
+
+func runFileAndUpdateWatcher(absPath string, watcher *fsnotify.Watcher, watchedFiles map[string]bool) {
+	// Clear module cache before reloading to pick up changes in imported files
+	interpreter.ClearModuleCache()
+
+	// Run the file
+	runFile(absPath)
+
+	// Get all loaded file modules after execution
+	loadedModules := interpreter.GetLoadedFileModules()
+
+	// Add newly loaded modules to watcher
+	for _, modulePath := range loadedModules {
+		if !watchedFiles[modulePath] {
+			if err := watcher.Add(modulePath); err != nil {
+				// Don't fail on watcher errors, just log them
+				fmt.Fprintf(os.Stderr, "Warning: could not watch imported file %s: %v\n", modulePath, err)
+			} else {
+				watchedFiles[modulePath] = true
+			}
+		}
+	}
+
+	// Remove modules from watcher that are no longer loaded
+	loadedSet := make(map[string]bool)
+	for _, modulePath := range loadedModules {
+		loadedSet[modulePath] = true
+	}
+	for filePath := range watchedFiles {
+		// Don't remove the main file from watcher
+		if filePath == absPath {
+			continue
+		}
+		// If file is no longer in loaded modules, remove from watcher
+		if !loadedSet[filePath] {
+			if err := watcher.Remove(filePath); err != nil {
+				// Ignore errors when removing
+				continue
+			}
+			delete(watchedFiles, filePath)
+		}
+	}
+}
+
+func runFile(absPath string) {
 	// Read file
 	input, err := os.ReadFile(absPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
-		os.Exit(1)
+		if noWatch {
+			os.Exit(1)
+		}
+		return
 	}
 
 	// Lex
@@ -73,7 +231,10 @@ func runFile(filename string) {
 
 	if len(p.Errors()) > 0 {
 		printParserErrors(p.Errors())
-		os.Exit(1)
+		if noWatch {
+			os.Exit(1)
+		}
+		return
 	}
 
 	// Interpret
@@ -84,7 +245,10 @@ func runFile(filename string) {
 
 	if result != nil && result.Type() == interpreter.ErrorObj {
 		fmt.Fprintf(os.Stderr, "%s\n", result.Inspect())
-		os.Exit(1)
+		if noWatch {
+			os.Exit(1)
+		}
+		return
 	}
 }
 
@@ -93,4 +257,9 @@ func printParserErrors(errors []*parser.ParseError) {
 	for _, err := range errors {
 		fmt.Fprintf(os.Stderr, "  %s\n", err.Error())
 	}
+}
+
+func clearScreen() {
+	// ANSI escape code to clear screen and move cursor to top-left
+	fmt.Print("\033[H\033[2J")
 }
