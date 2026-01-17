@@ -506,7 +506,7 @@ s.substring(0, 5)           # "Hello"
 TotalScript includes built-in SQLite database support through the `db` module. Every model can be persisted to its own table.
 
 ```tsl
-import "db"
+import db
 ```
 
 The database file is created automatically (default: `data.db`) or can be specified via CLI argument `--db=myapp.db`. You can also configure it programmatically:
@@ -657,7 +657,7 @@ db.transaction(function() {
 TotalScript provides built-in HTTP server and client through the `http` module.
 
 ```tsl
-import "http"
+import http
 ```
 
 The module exports:
@@ -671,7 +671,7 @@ The module exports:
 The HTTP server is a model that you instantiate and configure:
 
 ```tsl
-import "http"
+import http
 
 var server = http.Server()
 ```
@@ -679,8 +679,8 @@ var server = http.Server()
 #### Defining Routes
 
 ```tsl
-import "http"
-import "db"
+import http
+import db
 
 var server = http.Server()
 
@@ -760,7 +760,7 @@ http.Response(301, "", {"Location": ["/new-path"]})
 All client methods return `http.Response | Error` (network errors return Error).
 
 ```tsl
-import "http"
+import http
 
 # GET request
 var res = http.client.get("https://api.example.com/users")
@@ -808,7 +808,7 @@ res.ok                          # true if status is 2xx
 ### Static Files
 
 ```tsl
-import "http"
+import http
 
 var server = http.Server()
 server.static("/assets", "./public")    # Serve ./public at /assets
@@ -818,7 +818,7 @@ server.static("/", "./dist")            # Serve ./dist at root
 ### Middleware
 
 ```tsl
-import "http"
+import http
 
 var server = http.Server()
 server.use(function(req: http.Request, next: function): http.Response {
