@@ -268,7 +268,7 @@ func evalBlockStatement(block *ast.BlockStatement, env *Environment) Object {
 
 		if result != nil {
 			rt := result.Type()
-			if rt == RETURN_VALUE_OBJ || rt == ERROR_OBJ || rt == BREAK_OBJ || rt == CONTINUE_OBJ {
+			if rt == ReturnValueObj || rt == ErrorObj || rt == BreakObj || rt == ContinueObj {
 				return result
 			}
 		}
@@ -295,15 +295,15 @@ func evalWhileStatement(ws *ast.WhileStatement, env *Environment) Object {
 			return result
 		}
 
-		if result.Type() == RETURN_VALUE_OBJ {
+		if result.Type() == ReturnValueObj {
 			return result
 		}
 
-		if result.Type() == BREAK_OBJ {
+		if result.Type() == BreakObj {
 			break
 		}
 
-		if result.Type() == CONTINUE_OBJ {
+		if result.Type() == ContinueObj {
 			continue
 		}
 	}
@@ -334,10 +334,10 @@ func evalForStatement(fs *ast.ForStatement, env *Environment) Object {
 				if IsError(result) {
 					return result
 				}
-				if result.Type() == RETURN_VALUE_OBJ {
+				if result.Type() == ReturnValueObj {
 					return result
 				}
-				if result.Type() == BREAK_OBJ {
+				if result.Type() == BreakObj {
 					break
 				}
 			}
@@ -353,10 +353,10 @@ func evalForStatement(fs *ast.ForStatement, env *Environment) Object {
 				if IsError(result) {
 					return result
 				}
-				if result.Type() == RETURN_VALUE_OBJ {
+				if result.Type() == ReturnValueObj {
 					return result
 				}
-				if result.Type() == BREAK_OBJ {
+				if result.Type() == BreakObj {
 					break
 				}
 			}
@@ -393,10 +393,10 @@ func evalForStatement(fs *ast.ForStatement, env *Environment) Object {
 			if IsError(result) {
 				return result
 			}
-			if result.Type() == RETURN_VALUE_OBJ {
+			if result.Type() == ReturnValueObj {
 				return result
 			}
-			if result.Type() == BREAK_OBJ {
+			if result.Type() == BreakObj {
 				break
 			}
 
@@ -469,11 +469,11 @@ func evalMinusPrefixOperatorExpression(right Object) Object {
 
 func evalInfixExpression(operator string, left, right Object) Object {
 	switch {
-	case left.Type() == INTEGER_OBJ && right.Type() == INTEGER_OBJ:
+	case left.Type() == IntegerObj && right.Type() == IntegerObj:
 		return evalIntegerInfixExpression(operator, left, right)
-	case left.Type() == FLOAT_OBJ || right.Type() == FLOAT_OBJ:
+	case left.Type() == FloatObj || right.Type() == FloatObj:
 		return evalFloatInfixExpression(operator, left, right)
-	case left.Type() == STRING_OBJ && right.Type() == STRING_OBJ:
+	case left.Type() == StringObj && right.Type() == StringObj:
 		return evalStringInfixExpression(operator, left, right)
 	case operator == "==":
 		return nativeBoolToBooleanObject(objectsEqual(left, right))
@@ -991,9 +991,9 @@ func unwrapReturnValue(obj Object) Object {
 
 func evalIndexExpression(left, index Object) Object {
 	switch {
-	case left.Type() == ARRAY_OBJ && index.Type() == INTEGER_OBJ:
+	case left.Type() == ArrayObj && index.Type() == IntegerObj:
 		return evalArrayIndexExpression(left, index)
-	case left.Type() == MAP_OBJ && index.Type() == STRING_OBJ:
+	case left.Type() == MapObj && index.Type() == StringObj:
 		return evalMapIndexExpression(left, index)
 	default:
 		return newError("index operator not supported: %s", left.Type())
@@ -1448,21 +1448,21 @@ func evalIsOperatorWithTypeName(left Object, typeName string, env *Environment) 
 	// Check for built-in type names first
 	switch typeName {
 	case typeNameInteger:
-		return nativeBoolToBooleanObject(left.Type() == INTEGER_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == IntegerObj)
 	case typeNameFloat:
-		return nativeBoolToBooleanObject(left.Type() == FLOAT_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == FloatObj)
 	case typeNameString:
-		return nativeBoolToBooleanObject(left.Type() == STRING_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == StringObj)
 	case typeNameBoolean:
-		return nativeBoolToBooleanObject(left.Type() == BOOLEAN_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == BooleanObj)
 	case typeNameNull:
-		return nativeBoolToBooleanObject(left.Type() == NULL_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == NullObj)
 	case typeNameArray:
-		return nativeBoolToBooleanObject(left.Type() == ARRAY_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == ArrayObj)
 	case typeNameMap:
-		return nativeBoolToBooleanObject(left.Type() == MAP_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == MapObj)
 	case typeNameFunction:
-		return nativeBoolToBooleanObject(left.Type() == FUNCTION_OBJ)
+		return nativeBoolToBooleanObject(left.Type() == FunctionObj)
 	}
 
 	// Not a built-in type name, try to evaluate as identifier (Model or Enum)

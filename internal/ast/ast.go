@@ -9,6 +9,9 @@ import (
 )
 
 // Node is the base interface for all AST nodes.
+// All nodes must implement:
+//   - TokenLiteral() returns the literal value of the token associated with this node
+//   - String() returns a string representation of the node for debugging and display
 type Node interface {
 	TokenLiteral() string
 	String() string

@@ -82,7 +82,7 @@ func runFile(filename string) {
 	stdlib.RegisterBuiltins(env)
 	result := interpreter.Eval(program, env)
 
-	if result != nil && result.Type() == interpreter.ERROR_OBJ {
+	if result != nil && result.Type() == interpreter.ErrorObj {
 		fmt.Fprintf(os.Stderr, "%s\n", result.Inspect())
 		os.Exit(1)
 	}

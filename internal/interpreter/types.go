@@ -35,7 +35,7 @@ func validateType(obj Object, typeExpr *ast.TypeExpression, env *Environment) Ob
 
 	// Handle optional types
 	if typeExpr.Optional {
-		if obj.Type() == NULL_OBJ {
+		if obj.Type() == NullObj {
 			// null is valid for optional types
 			return nil
 		}
@@ -81,47 +81,47 @@ func validateSimpleType(obj Object, typeName string, env *Environment) Object {
 	// Check built-in types
 	switch typeName {
 	case typeNameInteger:
-		if obj.Type() != INTEGER_OBJ {
+		if obj.Type() != IntegerObj {
 			return newError("type mismatch: expected integer, got %s", getTypeName(obj))
 		}
 		return nil
 	case typeNameFloat:
 		// Allow automatic integer-to-float conversion
-		if obj.Type() == INTEGER_OBJ {
+		if obj.Type() == IntegerObj {
 			// Integer is acceptable for float (will be converted)
 			return nil
 		}
-		if obj.Type() != FLOAT_OBJ {
+		if obj.Type() != FloatObj {
 			return newError("type mismatch: expected float, got %s", getTypeName(obj))
 		}
 		return nil
 	case typeNameString:
-		if obj.Type() != STRING_OBJ {
+		if obj.Type() != StringObj {
 			return newError("type mismatch: expected string, got %s", getTypeName(obj))
 		}
 		return nil
 	case typeNameBoolean:
-		if obj.Type() != BOOLEAN_OBJ {
+		if obj.Type() != BooleanObj {
 			return newError("type mismatch: expected boolean, got %s", getTypeName(obj))
 		}
 		return nil
 	case typeNameNull:
-		if obj.Type() != NULL_OBJ {
+		if obj.Type() != NullObj {
 			return newError("type mismatch: expected null, got %s", getTypeName(obj))
 		}
 		return nil
 	case typeNameArray:
-		if obj.Type() != ARRAY_OBJ {
+		if obj.Type() != ArrayObj {
 			return newError("type mismatch: expected array, got %s", getTypeName(obj))
 		}
 		return nil
 	case typeNameMap:
-		if obj.Type() != MAP_OBJ {
+		if obj.Type() != MapObj {
 			return newError("type mismatch: expected map, got %s", getTypeName(obj))
 		}
 		return nil
 	case typeNameFunction:
-		if obj.Type() != FUNCTION_OBJ {
+		if obj.Type() != FunctionObj {
 			return newError("type mismatch: expected function, got %s", getTypeName(obj))
 		}
 		return nil
@@ -166,7 +166,7 @@ func validateGenericType(obj Object, typeExpr *ast.TypeExpression, env *Environm
 	// Currently only support array<T> and map<K, V>
 	switch typeExpr.Name {
 	case typeNameArray:
-		if obj.Type() != ARRAY_OBJ {
+		if obj.Type() != ArrayObj {
 			return newError("type mismatch: expected array, got %s", getTypeName(obj))
 		}
 
@@ -212,7 +212,7 @@ func validateGenericType(obj Object, typeExpr *ast.TypeExpression, env *Environm
 		return nil
 
 	case typeNameMap:
-		if obj.Type() != MAP_OBJ {
+		if obj.Type() != MapObj {
 			return newError("type mismatch: expected map, got %s", getTypeName(obj))
 		}
 
@@ -272,7 +272,7 @@ func coerceValue(obj Object, typeExpr *ast.TypeExpression) Object {
 
 	// Handle optional types - coerce the base type
 	if typeExpr.Optional {
-		if obj.Type() == NULL_OBJ {
+		if obj.Type() == NullObj {
 			return obj
 		}
 		baseType := &ast.TypeExpression{
@@ -295,7 +295,7 @@ func coerceValue(obj Object, typeExpr *ast.TypeExpression) Object {
 	}
 
 	// Handle integer-to-float coercion
-	if typeExpr.Name == typeNameFloat && obj.Type() == INTEGER_OBJ {
+	if typeExpr.Name == typeNameFloat && obj.Type() == IntegerObj {
 		intObj, ok := obj.(*Integer)
 		if ok {
 			return &Float{Value: float64(intObj.Value)}

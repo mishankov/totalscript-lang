@@ -57,19 +57,19 @@ func TestNextToken_TwoCharTokens(t *testing.T) {
 		expectedLiteral string
 	}{
 		{token.EQ, "=="},
-		{token.NOT_EQ, "!="},
-		{token.LT_EQ, "<="},
-		{token.GT_EQ, ">="},
+		{token.NotEq, "!="},
+		{token.LtEq, "<="},
+		{token.GtEq, ">="},
 		{token.AND, "&&"},
 		{token.OR, "||"},
-		{token.DOTDOT, ".."},
+		{token.DotDot, ".."},
 		{token.POWER, "**"},
-		{token.SLASHSLASH, "//"},
-		{token.PLUS_ASSIGN, "+="},
-		{token.MINUS_ASSIGN, "-="},
-		{token.ASTERISK_ASSIGN, "*="},
-		{token.SLASH_ASSIGN, "/="},
-		{token.PERCENT_ASSIGN, "%="},
+		{token.SlashSlash, "//"},
+		{token.PlusAssign, "+="},
+		{token.MinusAssign, "-="},
+		{token.AsteriskAssign, "*="},
+		{token.SlashAssign, "/="},
+		{token.PercentAssign, "%="},
 		{token.EOF, ""},
 	}
 
@@ -97,7 +97,7 @@ func TestNextToken_ThreeCharTokens(t *testing.T) {
 		expectedType    token.TokenType
 		expectedLiteral string
 	}{
-		{token.DOTDOTEQ, "..="},
+		{token.DotDotEq, "..="},
 		{token.EOF, ""},
 	}
 

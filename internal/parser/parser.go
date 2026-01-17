@@ -32,33 +32,33 @@ const (
 )
 
 var precedences = map[token.TokenType]int{
-	token.ASSIGN:          ASSIGN,
-	token.PLUS_ASSIGN:     ASSIGN,
-	token.MINUS_ASSIGN:    ASSIGN,
-	token.ASTERISK_ASSIGN: ASSIGN,
-	token.SLASH_ASSIGN:    ASSIGN,
-	token.PERCENT_ASSIGN:  ASSIGN,
-	token.OR:              OR,
-	token.AND:             AND,
-	token.EQ:              EQUALS,
-	token.NOT_EQ:          EQUALS,
-	token.LT:              LESSGREATER,
-	token.GT:              LESSGREATER,
-	token.LT_EQ:           LESSGREATER,
-	token.GT_EQ:           LESSGREATER,
-	token.IS:              IS,
-	token.DOTDOT:          RANGE,
-	token.DOTDOTEQ:        RANGE,
-	token.PLUS:            SUM,
-	token.MINUS:           SUM,
-	token.SLASH:           PRODUCT,
-	token.SLASHSLASH:      PRODUCT,
-	token.ASTERISK:        PRODUCT,
-	token.PERCENT:         PRODUCT,
-	token.POWER:           POWER,
-	token.LPAREN:          CALL,
-	token.LBRACKET:        INDEX,
-	token.DOT:             MEMBER,
+	token.ASSIGN:         ASSIGN,
+	token.PlusAssign:     ASSIGN,
+	token.MinusAssign:    ASSIGN,
+	token.AsteriskAssign: ASSIGN,
+	token.SlashAssign:    ASSIGN,
+	token.PercentAssign:  ASSIGN,
+	token.OR:             OR,
+	token.AND:            AND,
+	token.EQ:             EQUALS,
+	token.NotEq:          EQUALS,
+	token.LT:             LESSGREATER,
+	token.GT:             LESSGREATER,
+	token.LtEq:           LESSGREATER,
+	token.GtEq:           LESSGREATER,
+	token.IS:             IS,
+	token.DotDot:         RANGE,
+	token.DotDotEq:       RANGE,
+	token.PLUS:           SUM,
+	token.MINUS:          SUM,
+	token.SLASH:          PRODUCT,
+	token.SlashSlash:     PRODUCT,
+	token.ASTERISK:       PRODUCT,
+	token.PERCENT:        PRODUCT,
+	token.POWER:          POWER,
+	token.LPAREN:         CALL,
+	token.LBRACKET:       INDEX,
+	token.DOT:            MEMBER,
 }
 
 type (
@@ -103,34 +103,34 @@ func New(l *lexer.Lexer) *Parser {
 	p.registerPrefix(token.MODEL, p.parseModelLiteral)
 	p.registerPrefix(token.ENUM, p.parseEnumLiteral)
 	p.registerPrefix(token.THIS, p.parseThisExpression)
-	p.registerPrefix(token.DOTDOT, p.parsePrefixRangeExpression)
-	p.registerPrefix(token.DOTDOTEQ, p.parsePrefixRangeExpression)
+	p.registerPrefix(token.DotDot, p.parsePrefixRangeExpression)
+	p.registerPrefix(token.DotDotEq, p.parsePrefixRangeExpression)
 
 	p.infixParseFns = make(map[token.TokenType]infixParseFn)
 	p.registerInfix(token.PLUS, p.parseInfixExpression)
 	p.registerInfix(token.MINUS, p.parseInfixExpression)
 	p.registerInfix(token.SLASH, p.parseInfixExpression)
-	p.registerInfix(token.SLASHSLASH, p.parseInfixExpression)
+	p.registerInfix(token.SlashSlash, p.parseInfixExpression)
 	p.registerInfix(token.ASTERISK, p.parseInfixExpression)
 	p.registerInfix(token.PERCENT, p.parseInfixExpression)
 	p.registerInfix(token.POWER, p.parseInfixExpression)
 	p.registerInfix(token.EQ, p.parseInfixExpression)
-	p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.NotEq, p.parseInfixExpression)
 	p.registerInfix(token.LT, p.parseInfixExpression)
 	p.registerInfix(token.GT, p.parseInfixExpression)
-	p.registerInfix(token.LT_EQ, p.parseInfixExpression)
-	p.registerInfix(token.GT_EQ, p.parseInfixExpression)
+	p.registerInfix(token.LtEq, p.parseInfixExpression)
+	p.registerInfix(token.GtEq, p.parseInfixExpression)
 	p.registerInfix(token.AND, p.parseInfixExpression)
 	p.registerInfix(token.OR, p.parseInfixExpression)
 	p.registerInfix(token.IS, p.parseInfixExpression)
 	p.registerInfix(token.ASSIGN, p.parseInfixExpression)
-	p.registerInfix(token.PLUS_ASSIGN, p.parseInfixExpression)
-	p.registerInfix(token.MINUS_ASSIGN, p.parseInfixExpression)
-	p.registerInfix(token.ASTERISK_ASSIGN, p.parseInfixExpression)
-	p.registerInfix(token.SLASH_ASSIGN, p.parseInfixExpression)
-	p.registerInfix(token.PERCENT_ASSIGN, p.parseInfixExpression)
-	p.registerInfix(token.DOTDOT, p.parseRangeExpression)
-	p.registerInfix(token.DOTDOTEQ, p.parseRangeExpression)
+	p.registerInfix(token.PlusAssign, p.parseInfixExpression)
+	p.registerInfix(token.MinusAssign, p.parseInfixExpression)
+	p.registerInfix(token.AsteriskAssign, p.parseInfixExpression)
+	p.registerInfix(token.SlashAssign, p.parseInfixExpression)
+	p.registerInfix(token.PercentAssign, p.parseInfixExpression)
+	p.registerInfix(token.DotDot, p.parseRangeExpression)
+	p.registerInfix(token.DotDotEq, p.parseRangeExpression)
 	p.registerInfix(token.LPAREN, p.parseCallExpression)
 	p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 	p.registerInfix(token.DOT, p.parseMemberExpression)
@@ -834,7 +834,7 @@ func (p *Parser) parseRangeExpression(left ast.Expression) ast.Expression {
 	exp := &ast.RangeExpression{
 		Token:     p.curToken,
 		Start:     left,
-		Inclusive: p.curTokenIs(token.DOTDOTEQ),
+		Inclusive: p.curTokenIs(token.DotDotEq),
 	}
 
 	precedence := p.curPrecedence()
@@ -855,7 +855,7 @@ func (p *Parser) parsePrefixRangeExpression() ast.Expression {
 	exp := &ast.RangeExpression{
 		Token:     p.curToken,
 		Start:     nil, // Open-ended start (e.g., ..5)
-		Inclusive: p.curTokenIs(token.DOTDOTEQ),
+		Inclusive: p.curTokenIs(token.DotDotEq),
 	}
 
 	p.nextToken()

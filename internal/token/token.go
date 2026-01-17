@@ -30,17 +30,17 @@ const (
 	MINUS      TokenType = "-"
 	ASTERISK   TokenType = "*"
 	SLASH      TokenType = "/"
-	SLASHSLASH TokenType = "//" // integer division
+	SlashSlash TokenType = "//" // integer division
 	PERCENT    TokenType = "%"
 	POWER      TokenType = "**"
 
 	// Comparison operators
-	EQ     TokenType = "=="
-	NOT_EQ TokenType = "!="
-	LT     TokenType = "<"
-	GT     TokenType = ">"
-	LT_EQ  TokenType = "<="
-	GT_EQ  TokenType = ">="
+	EQ    TokenType = "=="
+	NotEq TokenType = "!="
+	LT    TokenType = "<"
+	GT    TokenType = ">"
+	LtEq  TokenType = "<="
+	GtEq  TokenType = ">="
 
 	// Logical operators
 	AND TokenType = "&&"
@@ -48,19 +48,19 @@ const (
 	NOT TokenType = "!"
 
 	// Compound assignment operators
-	PLUS_ASSIGN     TokenType = "+="
-	MINUS_ASSIGN    TokenType = "-="
-	ASTERISK_ASSIGN TokenType = "*="
-	SLASH_ASSIGN    TokenType = "/="
-	PERCENT_ASSIGN  TokenType = "%="
+	PlusAssign     TokenType = "+="
+	MinusAssign    TokenType = "-="
+	AsteriskAssign TokenType = "*="
+	SlashAssign    TokenType = "/="
+	PercentAssign  TokenType = "%="
 
 	// Delimiters
 	COMMA     TokenType = ","
 	SEMICOLON TokenType = ";"
 	COLON     TokenType = ":"
 	DOT       TokenType = "."
-	DOTDOT    TokenType = ".."  // range exclusive
-	DOTDOTEQ  TokenType = "..=" // range inclusive
+	DotDot    TokenType = ".."  // range exclusive
+	DotDotEq  TokenType = "..=" // range inclusive
 
 	LPAREN   TokenType = "("
 	RPAREN   TokenType = ")"

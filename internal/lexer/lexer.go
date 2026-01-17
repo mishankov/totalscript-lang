@@ -81,13 +81,13 @@ func (l *Lexer) NextToken() token.Token {
 		}
 	case '+':
 		if l.peekChar() == '=' {
-			tok = l.makeTwoCharToken(token.PLUS_ASSIGN)
+			tok = l.makeTwoCharToken(token.PlusAssign)
 		} else {
 			tok = l.newToken(token.PLUS, l.ch)
 		}
 	case '-':
 		if l.peekChar() == '=' {
-			tok = l.makeTwoCharToken(token.MINUS_ASSIGN)
+			tok = l.makeTwoCharToken(token.MinusAssign)
 		} else {
 			tok = l.newToken(token.MINUS, l.ch)
 		}
@@ -96,40 +96,40 @@ func (l *Lexer) NextToken() token.Token {
 		case '*':
 			tok = l.makeTwoCharToken(token.POWER)
 		case '=':
-			tok = l.makeTwoCharToken(token.ASTERISK_ASSIGN)
+			tok = l.makeTwoCharToken(token.AsteriskAssign)
 		default:
 			tok = l.newToken(token.ASTERISK, l.ch)
 		}
 	case '/':
 		switch l.peekChar() {
 		case '/':
-			tok = l.makeTwoCharToken(token.SLASHSLASH)
+			tok = l.makeTwoCharToken(token.SlashSlash)
 		case '=':
-			tok = l.makeTwoCharToken(token.SLASH_ASSIGN)
+			tok = l.makeTwoCharToken(token.SlashAssign)
 		default:
 			tok = l.newToken(token.SLASH, l.ch)
 		}
 	case '%':
 		if l.peekChar() == '=' {
-			tok = l.makeTwoCharToken(token.PERCENT_ASSIGN)
+			tok = l.makeTwoCharToken(token.PercentAssign)
 		} else {
 			tok = l.newToken(token.PERCENT, l.ch)
 		}
 	case '!':
 		if l.peekChar() == '=' {
-			tok = l.makeTwoCharToken(token.NOT_EQ)
+			tok = l.makeTwoCharToken(token.NotEq)
 		} else {
 			tok = l.newToken(token.NOT, l.ch)
 		}
 	case '<':
 		if l.peekChar() == '=' {
-			tok = l.makeTwoCharToken(token.LT_EQ)
+			tok = l.makeTwoCharToken(token.LtEq)
 		} else {
 			tok = l.newToken(token.LT, l.ch)
 		}
 	case '>':
 		if l.peekChar() == '=' {
-			tok = l.makeTwoCharToken(token.GT_EQ)
+			tok = l.makeTwoCharToken(token.GtEq)
 		} else {
 			tok = l.newToken(token.GT, l.ch)
 		}
@@ -148,9 +148,9 @@ func (l *Lexer) NextToken() token.Token {
 	case '.':
 		if l.peekChar() == '.' {
 			if l.peekCharN(2) == '=' {
-				tok = l.makeThreeCharToken(token.DOTDOTEQ)
+				tok = l.makeThreeCharToken(token.DotDotEq)
 			} else {
-				tok = l.makeTwoCharToken(token.DOTDOT)
+				tok = l.makeTwoCharToken(token.DotDot)
 			}
 		} else {
 			tok = l.newToken(token.DOT, l.ch)

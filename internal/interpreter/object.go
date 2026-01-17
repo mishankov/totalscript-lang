@@ -14,30 +14,33 @@ type ObjectType string
 
 // ObjectType constants define all runtime value types.
 const (
-	// INTEGER_OBJ represents an integer value.
-	INTEGER_OBJ          ObjectType = "INTEGER"
-	FLOAT_OBJ            ObjectType = "FLOAT"
-	STRING_OBJ           ObjectType = "STRING"
-	BOOLEAN_OBJ          ObjectType = "BOOLEAN"
-	NULL_OBJ             ObjectType = "NULL"
-	RETURN_VALUE_OBJ     ObjectType = "RETURN_VALUE"
-	ERROR_OBJ            ObjectType = "ERROR"
-	FUNCTION_OBJ         ObjectType = "FUNCTION"
-	ARRAY_OBJ            ObjectType = "ARRAY"
-	MAP_OBJ              ObjectType = "MAP"
-	BREAK_OBJ            ObjectType = "BREAK"
-	CONTINUE_OBJ         ObjectType = "CONTINUE"
-	BUILTIN_OBJ          ObjectType = "BUILTIN"
-	BOUND_METHOD_OBJ     ObjectType = "BOUND_METHOD"
-	MODEL_OBJ            ObjectType = "MODEL"
-	MODEL_INSTANCE_OBJ   ObjectType = "MODEL_INSTANCE"
-	ENUM_OBJ             ObjectType = "ENUM"
-	ENUM_VALUE_OBJ       ObjectType = "ENUM_VALUE"
-	MODULE_OBJ           ObjectType = "MODULE"
-	DB_STATE_WRAPPER_OBJ ObjectType = "DB_STATE_WRAPPER"
+	// IntegerObj represents an integer value.
+	IntegerObj        ObjectType = "INTEGER"
+	FloatObj          ObjectType = "FLOAT"
+	StringObj         ObjectType = "STRING"
+	BooleanObj        ObjectType = "BOOLEAN"
+	NullObj           ObjectType = "NULL"
+	ReturnValueObj    ObjectType = "RETURN_VALUE"
+	ErrorObj          ObjectType = "ERROR"
+	FunctionObj       ObjectType = "FUNCTION"
+	ArrayObj          ObjectType = "ARRAY"
+	MapObj            ObjectType = "MAP"
+	BreakObj          ObjectType = "BREAK"
+	ContinueObj       ObjectType = "CONTINUE"
+	BuiltinObj        ObjectType = "BUILTIN"
+	BoundMethodObj    ObjectType = "BOUND_METHOD"
+	ModelObj          ObjectType = "MODEL"
+	ModelInstanceObj  ObjectType = "MODEL_INSTANCE"
+	EnumObj           ObjectType = "ENUM"
+	EnumValueObj      ObjectType = "ENUM_VALUE"
+	ModuleObj         ObjectType = "MODULE"
+	DbStateWrapperObj ObjectType = "DB_STATE_WRAPPER"
 )
 
 // Object is the interface for all runtime values.
+// All runtime values must implement:
+//   - Type() returns the ObjectType indicating what kind of value this is
+//   - Inspect() returns a string representation of the value for display
 type Object interface {
 	Type() ObjectType
 	Inspect() string
@@ -48,7 +51,7 @@ type Integer struct {
 	Value int64
 }
 
-func (i *Integer) Type() ObjectType { return INTEGER_OBJ }
+func (i *Integer) Type() ObjectType { return IntegerObj }
 func (i *Integer) Inspect() string  { return fmt.Sprintf("%d", i.Value) }
 
 // Float represents a float value.
@@ -56,7 +59,7 @@ type Float struct {
 	Value float64
 }
 
-func (f *Float) Type() ObjectType { return FLOAT_OBJ }
+func (f *Float) Type() ObjectType { return FloatObj }
 func (f *Float) Inspect() string  { return fmt.Sprintf("%g", f.Value) }
 
 // String represents a string value.
@@ -64,7 +67,7 @@ type String struct {
 	Value string
 }
 
-func (s *String) Type() ObjectType { return STRING_OBJ }
+func (s *String) Type() ObjectType { return StringObj }
 func (s *String) Inspect() string  { return s.Value }
 
 // Boolean represents a boolean value.
@@ -72,13 +75,13 @@ type Boolean struct {
 	Value bool
 }
 
-func (b *Boolean) Type() ObjectType { return BOOLEAN_OBJ }
+func (b *Boolean) Type() ObjectType { return BooleanObj }
 func (b *Boolean) Inspect() string  { return fmt.Sprintf("%t", b.Value) }
 
 // Null represents a null value.
 type Null struct{}
 
-func (n *Null) Type() ObjectType { return NULL_OBJ }
+func (n *Null) Type() ObjectType { return NullObj }
 func (n *Null) Inspect() string  { return "null" }
 
 // ReturnValue wraps a value being returned.
@@ -86,7 +89,7 @@ type ReturnValue struct {
 	Value Object
 }
 
-func (rv *ReturnValue) Type() ObjectType { return RETURN_VALUE_OBJ }
+func (rv *ReturnValue) Type() ObjectType { return ReturnValueObj }
 func (rv *ReturnValue) Inspect() string  { return rv.Value.Inspect() }
 
 // Error represents an error.
@@ -94,7 +97,7 @@ type Error struct {
 	Message string
 }
 
-func (e *Error) Type() ObjectType { return ERROR_OBJ }
+func (e *Error) Type() ObjectType { return ErrorObj }
 func (e *Error) Inspect() string  { return "ERROR: " + e.Message }
 
 // Function represents a function.
@@ -104,7 +107,7 @@ type Function struct {
 	Env        *Environment
 }
 
-func (f *Function) Type() ObjectType { return FUNCTION_OBJ }
+func (f *Function) Type() ObjectType { return FunctionObj }
 func (f *Function) Inspect() string {
 	var out bytes.Buffer
 	params := []string{}
@@ -129,7 +132,7 @@ type Builtin struct {
 	Fn   BuiltinFunction
 }
 
-func (b *Builtin) Type() ObjectType { return BUILTIN_OBJ }
+func (b *Builtin) Type() ObjectType { return BuiltinObj }
 func (b *Builtin) Inspect() string  { return "builtin function: " + b.Name }
 
 // BoundMethod represents a method bound to a receiver object.
@@ -138,7 +141,7 @@ type BoundMethod struct {
 	Method   BuiltinFunction
 }
 
-func (bm *BoundMethod) Type() ObjectType { return BOUND_METHOD_OBJ }
+func (bm *BoundMethod) Type() ObjectType { return BoundMethodObj }
 func (bm *BoundMethod) Inspect() string  { return "bound method" }
 
 // Array represents an array.
@@ -146,7 +149,7 @@ type Array struct {
 	Elements []Object
 }
 
-func (ao *Array) Type() ObjectType { return ARRAY_OBJ }
+func (ao *Array) Type() ObjectType { return ArrayObj }
 func (ao *Array) Inspect() string {
 	var out bytes.Buffer
 	elements := []string{}
@@ -164,7 +167,7 @@ type Map struct {
 	Pairs map[string]Object
 }
 
-func (m *Map) Type() ObjectType { return MAP_OBJ }
+func (m *Map) Type() ObjectType { return MapObj }
 func (m *Map) Inspect() string {
 	var out bytes.Buffer
 	pairs := []string{}
@@ -180,13 +183,13 @@ func (m *Map) Inspect() string {
 // Break represents a break statement.
 type Break struct{}
 
-func (b *Break) Type() ObjectType { return BREAK_OBJ }
+func (b *Break) Type() ObjectType { return BreakObj }
 func (b *Break) Inspect() string  { return "break" }
 
 // Continue represents a continue statement.
 type Continue struct{}
 
-func (c *Continue) Type() ObjectType { return CONTINUE_OBJ }
+func (c *Continue) Type() ObjectType { return ContinueObj }
 func (c *Continue) Inspect() string  { return "continue" }
 
 // Singleton instances
@@ -220,7 +223,7 @@ func IsTruthy(obj Object) bool {
 // IsError returns whether an object is an error.
 func IsError(obj Object) bool {
 	if obj != nil {
-		return obj.Type() == ERROR_OBJ
+		return obj.Type() == ErrorObj
 	}
 	return false
 }
@@ -235,7 +238,7 @@ type Model struct {
 	Constructors []*Function // Custom constructors
 }
 
-func (m *Model) Type() ObjectType { return MODEL_OBJ }
+func (m *Model) Type() ObjectType { return ModelObj }
 func (m *Model) Inspect() string  { return "model " + m.Name }
 
 // ModelInstance represents an instance of a model.
@@ -244,7 +247,7 @@ type ModelInstance struct {
 	Fields map[string]Object
 }
 
-func (mi *ModelInstance) Type() ObjectType { return MODEL_INSTANCE_OBJ }
+func (mi *ModelInstance) Type() ObjectType { return ModelInstanceObj }
 func (mi *ModelInstance) Inspect() string {
 	var out bytes.Buffer
 	pairs := []string{}
@@ -267,7 +270,7 @@ type Enum struct {
 	Values map[string]Object // name -> underlying value
 }
 
-func (e *Enum) Type() ObjectType { return ENUM_OBJ }
+func (e *Enum) Type() ObjectType { return EnumObj }
 func (e *Enum) Inspect() string  { return "enum " + e.Name }
 
 // EnumValue represents a specific enum value.
@@ -277,7 +280,7 @@ type EnumValue struct {
 	Value    Object // underlying value (integer, string, boolean)
 }
 
-func (ev *EnumValue) Type() ObjectType { return ENUM_VALUE_OBJ }
+func (ev *EnumValue) Type() ObjectType { return EnumValueObj }
 func (ev *EnumValue) Inspect() string {
 	return ev.EnumName + "." + ev.Name
 }
@@ -288,7 +291,7 @@ type Module struct {
 	Scope *Environment // Module's exported scope
 }
 
-func (m *Module) Type() ObjectType { return MODULE_OBJ }
+func (m *Module) Type() ObjectType { return ModuleObj }
 func (m *Module) Inspect() string  { return "module " + m.Name }
 
 // DBStateWrapper wraps a database state for use in query execution.
@@ -297,5 +300,5 @@ type DBStateWrapper struct {
 	State *DBState
 }
 
-func (w *DBStateWrapper) Type() ObjectType { return DB_STATE_WRAPPER_OBJ }
+func (w *DBStateWrapper) Type() ObjectType { return DbStateWrapperObj }
 func (w *DBStateWrapper) Inspect() string  { return "<db state>" }

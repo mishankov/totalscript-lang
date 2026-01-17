@@ -115,12 +115,6 @@ linters:
         linters:
           - gosec
 
-      # Token naming follows TotalScript specification
-      - path: internal/token/token\.go
-        text: "(don't use ALL_CAPS|don't use underscores)"
-        linters:
-          - revive
-
       # Accept current complexity for MVP
       - text: "has complex nested blocks"
         linters:
@@ -143,14 +137,9 @@ linters:
           - intrange
 
       # Interface method implementations don't need individual comments
+      # The interfaces themselves (Node, Object) are documented with method descriptions
       - path: internal/(ast|interpreter)/
         text: "exported method .*(TokenLiteral|String|Type|Inspect) should have comment"
-        linters:
-          - revive
-
-      # ObjectType constants follow pattern naming
-      - path: internal/interpreter/object\.go
-        text: "var-naming: don't use ALL_CAPS"
         linters:
           - revive
 
