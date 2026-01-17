@@ -5,9 +5,9 @@
 
 ### HTTP server + database
 
-```go
-import "http"
-import "db"
+```tsl
+import http
+import db
 
 var server = http.Server()
 

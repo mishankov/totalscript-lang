@@ -73,12 +73,12 @@ func TestImportStatements(t *testing.T) {
 		expectedAlias  string
 		expectedModule string
 	}{
-		{"stdlib module", `import "math"`, "math", "", "math"},
-		{"file module", `import "./utils"`, "./utils", "", "utils"},
-		{"nested file module", `import "./lib/helpers"`, "./lib/helpers", "", "helpers"},
-		{"module with alias", `import "math" as m`, "math", "m", "m"},
-		{"file with alias", `import "./geometry" as geo`, "./geometry", "geo", "geo"},
-		{"file with .tsl extension", `import "./utils.tsl"`, "./utils.tsl", "", "utils"},
+		{"stdlib module", `import math`, "math", "", "math"},
+		{"file module", `import ./utils`, "./utils", "", "utils"},
+		{"nested file module", `import ./lib/helpers`, "./lib/helpers", "", "helpers"},
+		{"module with alias", `import math as m`, "math", "m", "m"},
+		{"file with alias", `import ./geometry as geo`, "./geometry", "geo", "geo"},
+		{"file with .tsl extension", `import ./utils.tsl`, "./utils.tsl", "", "utils"},
 	}
 
 	for _, tt := range tests {

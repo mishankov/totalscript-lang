@@ -301,12 +301,15 @@ func (p *Parser) parseConstStatement() *ast.ConstStatement {
 func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	stmt := &ast.ImportStatement{Token: p.curToken}
 
-	// Expect a string literal for the module path
-	if !p.expectPeek(token.STRING) {
+	// Parse the module path - only unquoted imports supported
+	p.nextToken()
+
+	// Unquoted import: import math or import ./utils
+	stmt.Path = p.parseImportPath()
+	if stmt.Path == "" {
+		p.addError("expected import path (identifier or relative path)")
 		return nil
 	}
-
-	stmt.Path = p.curToken.Literal
 
 	// Check for optional 'as' clause
 	if p.peekTokenIs(token.AS) {
@@ -322,6 +325,63 @@ func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	}
 
 	return stmt
+}
+
+// parseImportPath parses an unquoted import path (e.g., "math", "./utils", "./lib/helpers").
+// It handles both simple identifiers and relative paths starting with "./".
+// After parsing, curToken is positioned at the last token of the path.
+func (p *Parser) parseImportPath() string {
+	// Simple identifier: import math
+	if p.curTokenIs(token.IDENT) {
+		return p.curToken.Literal
+	}
+
+	// Relative path starting with "./"
+	if !p.curTokenIs(token.DOT) || !p.peekTokenIs(token.SLASH) {
+		return "" // Invalid import path
+	}
+
+	var builder strings.Builder
+	builder.WriteString(".")
+	p.nextToken() // consume DOT, now at SLASH
+
+	// Build the path by consuming SLASH, IDENT, and DOT tokens
+	for {
+		switch {
+		case p.curTokenIs(token.SLASH):
+			builder.WriteString("/")
+			p.nextToken() // consume SLASH
+
+			if !p.curTokenIs(token.IDENT) {
+				return "" // Invalid path - expected identifier after slash
+			}
+
+			builder.WriteString(p.curToken.Literal)
+
+			// Check if there's more to parse
+			if p.peekTokenIs(token.SLASH) || p.peekTokenIs(token.DOT) {
+				p.nextToken() // consume IDENT, move to next token
+			}
+
+		case p.curTokenIs(token.DOT):
+			builder.WriteString(".")
+			p.nextToken() // consume DOT
+
+			if !p.curTokenIs(token.IDENT) {
+				return "" // Invalid path - expected identifier after dot
+			}
+
+			builder.WriteString(p.curToken.Literal)
+
+			// Check if there's more to parse
+			if p.peekTokenIs(token.SLASH) || p.peekTokenIs(token.DOT) {
+				p.nextToken() // consume IDENT, move to next token
+			}
+
+		default:
+			return builder.String()
+		}
+	}
 }
 
 // computeModuleName extracts the module name from an import path.

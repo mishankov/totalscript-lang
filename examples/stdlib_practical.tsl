@@ -1,8 +1,8 @@
 # Practical example: Configuration file reader with JSON
 
-import "json"
-import "fs"
-import "time"
+import json
+import fs
+import time
 
 println("=== Configuration File Manager ===")
 println()

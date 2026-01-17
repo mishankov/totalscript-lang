@@ -1,11 +1,11 @@
 # TotalScript Standard Library Showcase
 # Demonstrates all available stdlib modules
 
-import "math"
-import "json"
-import "fs"
-import "time"
-import "os"
+import math
+import json
+import fs
+import time
+import os
 
 println("╔════════════════════════════════════════════╗")
 println("║  TotalScript Standard Library Showcase   ║")

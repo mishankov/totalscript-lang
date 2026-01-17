@@ -321,8 +321,8 @@ The following features from `specification.md` are fully implemented and tested:
 - **Automatic type coercion**: Integers automatically convert to floats when float type is expected (variables, parameters, model fields, array elements)
 
 ### Modules & Imports
-- **Import statement**: `import "math"` for stdlib, `import "./utils"` for local files
-- **Import aliases**: `import "./geometry" as geo` for custom namespace
+- **Import statement**: `import math` for stdlib, `import ./utils` for local files
+- **Import aliases**: `import ./geometry as geo` for custom namespace
 - **Qualified access**: `math.PI`, `math.sqrt(16)`, `geo.circleArea(5)`
 - **Module caching**: Modules are loaded once and cached across imports
 - **Relative imports**: `./file`, `./lib/helpers` resolved relative to importing file
@@ -346,7 +346,7 @@ The following features from `specification.md` are fully implemented and tested:
   - All HTTP methods supported including PATCH
 
 ### Database Module
-- **Import**: `import "db"` to access database functionality
+- **Import**: `import db` to access database functionality
 - **Configuration**: `db.configure(path)` to set database file path (defaults to "data.db")
 - **Model persistence**: Save and load model instances with automatic UUID generation
 - **Save operations**: `db.save(instance)` for single save, `db.saveAll([instances])` for batch
@@ -446,7 +446,7 @@ Test execution: `go test ./...` - All tests pass ✅
 ### Phase 9: Modules and Standard Library (✅ 100% Complete)
 
 All planned features implemented:
-- ✅ Import statement parsing (`import "math"`, `import "./file" as alias`)
+- ✅ Import statement parsing (`import math`, `import ./file as alias`)
 - ✅ Module loading and caching
 - ✅ Qualified access (`math.PI`, `math.sqrt()`)
 - ✅ Relative path resolution for file modules
@@ -474,7 +474,7 @@ Optional remaining feature (not critical):
 
 ### Phase 10: Database Module (✅ 100% Complete)
 
-The `db` module provides SQLite integration through `import "db"`.
+The `db` module provides SQLite integration through `import db`.
 
 Implemented features:
 1. ✅ SQLite wrapper in `internal/interpreter/module.go` (createDBModule)
@@ -495,7 +495,7 @@ Usage examples in:
 
 ### Phase 11: HTTP Module (✅ 100% Complete)
 
-The `http` module provides HTTP server and client through `import "http"`.
+The `http` module provides HTTP server and client through `import http`.
 
 Implemented features:
 1. HTTP server and client in `internal/interpreter/module.go` (createHTTPModule)
@@ -514,7 +514,7 @@ Implemented features:
 
 Usage example:
 ```tsl
-import "http"
+import http
 var server = http.Server()
 server.get("/", handler)
 server.start(8080)
@@ -550,7 +550,7 @@ Based on dependencies and impact:
    - Array slicing: `arr[1..3]`, `arr[2..]`, `arr[..3]`, `arr[..]`
    - Negative index slicing: `arr[-3..-1]`, `arr[-3..]`, `arr[..-3]`
 6. ✅ **Phase 9**: Modules and Standard Library - COMPLETE
-   - Import statement parsing (`import "math"`, `import "./file" as alias`)
+   - Import statement parsing (`import math`, `import ./file as alias`)
    - Module loading and caching
    - Standard library modules: math, json, fs, time, os
 7. ✅ **Phase 10**: Database module - COMPLETE

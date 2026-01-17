@@ -1,4 +1,4 @@
-import "db"
+import db
 
 println("╔═══════════════════════════════════════════╗")
 println("║   TotalScript Database Module Test Suite  ║")

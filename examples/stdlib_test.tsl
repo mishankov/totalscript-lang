@@ -1,10 +1,10 @@
 # Test all standard library modules
 
-import "json"
-import "fs"
-import "time"
-import "os"
-import "math"
+import json
+import fs
+import time
+import os
+import math
 
 println("=== Testing json module ===")
 
