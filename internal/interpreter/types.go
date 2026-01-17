@@ -127,10 +127,42 @@ func validateSimpleType(obj Object, typeName string, env *Environment) Object {
 		return nil
 	}
 
-	// Check for user-defined types (models, enums)
-	typeObj, exists := env.Get(typeName)
-	if !exists {
-		return newError("unknown type: %s", typeName)
+	// Check for module-prefixed types (e.g., "http.Request")
+	var typeObj Object
+	var exists bool
+
+	if strings.Contains(typeName, ".") {
+		// Split into module name and type name
+		parts := strings.SplitN(typeName, ".", 2)
+		if len(parts) != 2 {
+			return newError("invalid type name: %s", typeName)
+		}
+		moduleName := parts[0]
+		memberName := parts[1]
+
+		// Get the module from environment
+		moduleObj, moduleExists := env.Get(moduleName)
+		if !moduleExists {
+			return newError("unknown module: %s", moduleName)
+		}
+
+		// Module should be a Module object
+		module, ok := moduleObj.(*Module)
+		if !ok {
+			return newError("%s is not a module", moduleName)
+		}
+
+		// Get the type from the module
+		typeObj, exists = module.Scope.Get(memberName)
+		if !exists {
+			return newError("type %s not found in module %s", memberName, moduleName)
+		}
+	} else {
+		// Check for user-defined types (models, enums) in current environment
+		typeObj, exists = env.Get(typeName)
+		if !exists {
+			return newError("unknown type: %s", typeName)
+		}
 	}
 
 	// Check if it's a model type
@@ -303,6 +335,114 @@ func coerceValue(obj Object, typeExpr *ast.TypeExpression) Object {
 	}
 
 	return obj
+}
+
+// validateTypeExists checks if a type expression refers to a valid type.
+// This is used at function definition time to catch unknown types early.
+// Returns nil if the type exists, error object if invalid.
+func validateTypeExists(typeExpr *ast.TypeExpression, env *Environment) Object {
+	if typeExpr == nil {
+		return nil
+	}
+
+	// Handle union types - check each type exists
+	if len(typeExpr.Union) > 0 {
+		for _, typeName := range typeExpr.Union {
+			if err := validateTypeNameExists(typeName, env); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	// Handle generic types - check base type and generic type arguments
+	if len(typeExpr.Generic) > 0 {
+		// Check base type (array, map, etc.)
+		if err := validateTypeNameExists(typeExpr.Name, env); err != nil {
+			return err
+		}
+		// Check generic type arguments
+		for _, genericTypeName := range typeExpr.Generic {
+			// Handle union types in generics (e.g., "integer | string")
+			if strings.Contains(genericTypeName, " | ") {
+				parts := strings.Split(genericTypeName, " | ")
+				for _, part := range parts {
+					if err := validateTypeNameExists(strings.TrimSpace(part), env); err != nil {
+						return err
+					}
+				}
+			} else {
+				if err := validateTypeNameExists(genericTypeName, env); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
+	// Handle simple types
+	return validateTypeNameExists(typeExpr.Name, env)
+}
+
+// validateTypeNameExists checks if a type name exists in the environment.
+func validateTypeNameExists(typeName string, env *Environment) Object {
+	// Check built-in types
+	switch typeName {
+	case typeNameInteger, typeNameFloat, typeNameString, typeNameBoolean,
+		typeNameNull, typeNameArray, typeNameMap, typeNameFunction:
+		return nil
+	}
+
+	// Check for module-prefixed types (e.g., "http.Request")
+	if strings.Contains(typeName, ".") {
+		parts := strings.SplitN(typeName, ".", 2)
+		if len(parts) != 2 {
+			return newError("invalid type name: %s", typeName)
+		}
+		moduleName := parts[0]
+		memberName := parts[1]
+
+		// Get the module from environment
+		moduleObj, moduleExists := env.Get(moduleName)
+		if !moduleExists {
+			return newError("unknown module: %s", moduleName)
+		}
+
+		// Module should be a Module object
+		module, ok := moduleObj.(*Module)
+		if !ok {
+			return newError("%s is not a module", moduleName)
+		}
+
+		// Check if the type exists in the module
+		typeObj, exists := module.Scope.Get(memberName)
+		if !exists {
+			return newError("type %s not found in module %s", memberName, moduleName)
+		}
+
+		// Verify it's a valid type (model, enum, or builtin constructor for http.Response)
+		switch typeObj.(type) {
+		case *Model, *Enum, *Builtin:
+			// Builtin is allowed for http.Response constructor which serves as a type
+			return nil
+		default:
+			return newError("'%s.%s' is not a type", moduleName, memberName)
+		}
+	}
+
+	// Check for user-defined types (models, enums) in current environment
+	typeObj, exists := env.Get(typeName)
+	if !exists {
+		return newError("unknown type: %s", typeName)
+	}
+
+	// Verify it's actually a type (model or enum)
+	switch typeObj.(type) {
+	case *Model, *Enum:
+		return nil
+	default:
+		return newError("'%s' is not a type", typeName)
+	}
 }
 
 func getTypeName(obj Object) string {

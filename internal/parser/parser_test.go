@@ -648,6 +648,85 @@ func TestMemberExpression(t *testing.T) {
 	}
 }
 
+func TestModulePrefixedTypesInFunctions(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{
+			name:     "module-prefixed parameter type",
+			input:    "function(r: http.Request) { return r }",
+			expected: true,
+		},
+		{
+			name:     "module-prefixed return type",
+			input:    "function(): http.Response { return null }",
+			expected: true,
+		},
+		{
+			name:     "module-prefixed parameter and return types",
+			input:    "function(r: http.Request): http.Response { return null }",
+			expected: true,
+		},
+		{
+			name:     "var with module-prefixed type",
+			input:    "var req: http.Request",
+			expected: true,
+		},
+		{
+			name:     "const with module-prefixed type",
+			input:    "const res: http.Response = null",
+			expected: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			l := lexer.New(tt.input)
+			p := New(l)
+			program := p.ParseProgram()
+
+			// Should parse without errors
+			if tt.expected {
+				checkParserErrors(t, p)
+				if len(program.Statements) != 1 {
+					t.Fatalf("program.Statements does not contain 1 statement. got=%d",
+						len(program.Statements))
+				}
+
+				// Verify the type expression contains the dot
+				stmt := program.Statements[0]
+				switch s := stmt.(type) {
+				case *ast.ExpressionStatement:
+					if fn, ok := s.Expression.(*ast.FunctionLiteral); ok {
+						if fn.ReturnType != nil && fn.ReturnType.Name != "" {
+							if fn.ReturnType.Name != "http.Response" && fn.ReturnType.Name != "" {
+								t.Errorf("expected return type 'http.Response', got %s", fn.ReturnType.Name)
+							}
+						}
+						if len(fn.Parameters) > 0 && fn.Parameters[0].Type != nil {
+							if fn.Parameters[0].Type.Name != "http.Request" && fn.Parameters[0].Type.Name != "" {
+								t.Errorf("expected parameter type 'http.Request', got %s", fn.Parameters[0].Type.Name)
+							}
+						}
+					}
+				case *ast.VarStatement:
+					if s.Type != nil && s.Type.Name != "http.Request" {
+						t.Errorf("expected type 'http.Request', got %s", s.Type.Name)
+					}
+				case *ast.ConstStatement:
+					if s.Type != nil && s.Type.Name != "http.Response" {
+						t.Errorf("expected type 'http.Response', got %s", s.Type.Name)
+					}
+				}
+			}
+		})
+	}
+}
+
 func checkParserErrors(t *testing.T, p *Parser) {
 	t.Helper()
 	errors := p.Errors()

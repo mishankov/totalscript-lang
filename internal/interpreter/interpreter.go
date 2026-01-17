@@ -169,6 +169,25 @@ func Eval(node ast.Node, env *Environment) Object {
 	case *ast.FunctionLiteral:
 		params := node.Parameters
 		body := node.Body
+
+		// Validate parameter types exist at definition time
+		for _, param := range params {
+			if param.Type != nil {
+				if err := validateTypeExists(param.Type, env); err != nil {
+					errObj, _ := err.(*Error)
+					return newError("parameter '%s': %s", param.Name.Value, errObj.Message)
+				}
+			}
+		}
+
+		// Validate return type exists at definition time
+		if node.ReturnType != nil {
+			if err := validateTypeExists(node.ReturnType, env); err != nil {
+				errObj, _ := err.(*Error)
+				return newError("return type: %s", errObj.Message)
+			}
+		}
+
 		return &Function{Parameters: params, Env: env, Body: body}
 
 	case *ast.CallExpression:

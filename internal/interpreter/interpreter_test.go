@@ -1427,3 +1427,85 @@ func TestTypeCoercionInArray(t *testing.T) {
 	evaluated := testEval(input)
 	testFloatObject(t, evaluated, 6.0)
 }
+
+func TestModulePrefixedTypesInFunctions(t *testing.T) {
+	t.Parallel()
+	// Test that module-prefixed types in function signatures work correctly
+	input := `
+	const Point = model {
+		x: integer
+		y: integer
+	}
+
+	const getX = function(p: Point): integer {
+		return p.x
+	}
+
+	var p = Point(3, 4)
+	getX(p)
+	`
+
+	evaluated := testEval(input)
+	testIntegerObject(t, evaluated, 3)
+}
+
+func TestModuleTypeScopingEnforcement(t *testing.T) {
+	t.Parallel()
+	// Test that module types are NOT accessible without module prefix
+	tests := []struct {
+		name          string
+		input         string
+		expectedError string
+	}{
+		{
+			name: "type from global scope works",
+			input: `
+			const Point = model {
+				x: integer
+				y: integer
+			}
+
+			var p: Point = Point(1, 2)
+			p.x
+			`,
+			expectedError: "", // Point is in global scope, should work
+		},
+		{
+			name: "qualified type reference in function works",
+			input: `
+			const Point = model {
+				x: integer
+				y: integer
+			}
+
+			const createPoint = function(x: integer, y: integer): Point {
+				return Point(x, y)
+			}
+
+			var p = createPoint(5, 10)
+			p.y
+			`,
+			expectedError: "", // Should work - Point is in scope
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			evaluated := testEval(tt.input)
+
+			if tt.expectedError != "" {
+				errObj, ok := evaluated.(*Error)
+				if !ok {
+					t.Fatalf("expected error object, got %T (%+v)", evaluated, evaluated)
+				}
+				if errObj.Message != tt.expectedError {
+					t.Errorf("wrong error message. expected=%q, got=%q",
+						tt.expectedError, errObj.Message)
+				}
+			} else if IsError(evaluated) {
+				t.Fatalf("unexpected error: %s", evaluated.(*Error).Message)
+			}
+		})
+	}
+}

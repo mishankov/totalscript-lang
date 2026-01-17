@@ -906,12 +906,22 @@ func (p *Parser) parseMapLiteral() ast.Expression {
 }
 
 func (p *Parser) parseGenericType() string {
-	// Parse a type name that could be a union (integer | string)
+	// Parse a type name that could be a union (integer | string) or module-prefixed (http.Request)
 	if !p.curTokenIs(token.IDENT) {
 		return ""
 	}
 
 	typeName := p.curToken.Literal
+
+	// Check for member expression (module.Type)
+	if p.peekTokenIs(token.DOT) {
+		p.nextToken() // consume '.'
+		if p.peekTokenIs(token.IDENT) {
+			p.nextToken() // move to type name
+			// Build qualified type name (e.g., "http.Request")
+			typeName = typeName + "." + p.curToken.Literal
+		}
+	}
 
 	// Check for union inside generic
 	if p.peekTokenIs(token.PIPE) {
@@ -922,7 +932,16 @@ func (p *Parser) parseGenericType() string {
 			p.nextToken() // consume '|'
 			p.nextToken() // move to next type
 			if p.curTokenIs(token.IDENT) {
-				parts = append(parts, p.curToken.Literal)
+				nextTypeName := p.curToken.Literal
+				// Check for module-prefixed type in union
+				if p.peekTokenIs(token.DOT) {
+					p.nextToken() // consume '.'
+					if p.peekTokenIs(token.IDENT) {
+						p.nextToken() // move to type name
+						nextTypeName = nextTypeName + "." + p.curToken.Literal
+					}
+				}
+				parts = append(parts, nextTypeName)
 			}
 		}
 
@@ -936,9 +955,19 @@ func (p *Parser) parseGenericType() string {
 func (p *Parser) parseTypeExpression() *ast.TypeExpression {
 	typeExpr := &ast.TypeExpression{Token: p.curToken}
 
-	// Handle union types (integer | string)
+	// Handle union types (integer | string) and module-prefixed types (http.Request)
 	if p.curTokenIs(token.IDENT) {
 		typeExpr.Name = p.curToken.Literal
+
+		// Check for member expression (module.Type)
+		if p.peekTokenIs(token.DOT) {
+			p.nextToken() // consume '.'
+			if !p.expectPeek(token.IDENT) {
+				return nil
+			}
+			// Build qualified type name (e.g., "http.Request")
+			typeExpr.Name = typeExpr.Name + "." + p.curToken.Literal
+		}
 
 		// Check for generic type parameter
 		if p.peekTokenIs(token.LT) {

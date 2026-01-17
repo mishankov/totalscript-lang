@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mishankov/totalscript-lang/internal/ast"
 	"github.com/mishankov/totalscript-lang/internal/lexer"
 	"github.com/mishankov/totalscript-lang/internal/parser"
 	_ "modernc.org/sqlite" // SQLite driver
@@ -895,8 +896,33 @@ func createOSModule() *Module {
 func createHTTPModule() *Module {
 	env := NewEnvironment()
 
+	// http.Request - Request model type for type annotations
+	// The actual request objects are created dynamically as Maps when handling requests,
+	// but this model allows type annotations like function(req: http.Request)
+	requestModel := &Model{
+		Name:         "Request",
+		FieldNames:   []string{},
+		Fields:       make(map[string]*ast.TypeExpression),
+		Annotations:  make(map[string][]string),
+		Methods:      make(map[string]*Function),
+		Constructors: []*Function{},
+	}
+	env.Set("Request", requestModel)
+
 	// http.Response(status, body?, headers?) - Response constructor
 	env.Set("Response", createResponseConstructor())
+
+	// http.ResponseType - Response model type for type annotations
+	// Used for return type annotations like function(): http.Response
+	responseModel := &Model{
+		Name:         "ResponseType",
+		FieldNames:   []string{},
+		Fields:       make(map[string]*ast.TypeExpression),
+		Annotations:  make(map[string][]string),
+		Methods:      make(map[string]*Function),
+		Constructors: []*Function{},
+	}
+	env.Set("ResponseType", responseModel)
 
 	// http.client - Client object with HTTP methods
 	env.Set("client", createClientObject())
