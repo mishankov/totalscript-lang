@@ -624,15 +624,14 @@ type ModelField struct {
 
 func (mf *ModelField) String() string {
 	var out bytes.Buffer
-	// Include annotations in output
-	for _, ann := range mf.Annotations {
-		out.WriteString("@")
-		out.WriteString(ann)
-		out.WriteString(" ")
-	}
 	out.WriteString(mf.Name.String())
 	out.WriteString(": ")
 	out.WriteString(mf.Type.String())
+	// Include annotations after the type
+	for _, ann := range mf.Annotations {
+		out.WriteString(" @")
+		out.WriteString(ann)
+	}
 	return out.String()
 }
 

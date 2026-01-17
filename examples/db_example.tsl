@@ -25,7 +25,7 @@ println()
 # Test 2: Model with @id annotation
 println("✓ TEST 2: Model with @id annotation")
 const User = model {
-  @id email: string
+  email: string @id
   name: string
   age: integer
 }
@@ -43,8 +43,8 @@ println()
 # Test 3: Composite primary key
 println("✓ TEST 3: Composite primary key")
 const OrderItem = model {
-  @id order_id: string
-  @id product_id: string
+  order_id: string @id
+  product_id: string @id
   quantity: integer
 }
 

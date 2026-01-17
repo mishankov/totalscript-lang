@@ -522,7 +522,7 @@ Mark a field as the primary key with `@id`. If no field is marked, an `_id` fiel
 
 ```tsl
 const User = model {
-  @id email: string     # email is the primary key
+  email: string @id     # email is the primary key
   name: string
   age: integer
 }

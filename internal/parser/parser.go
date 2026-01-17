@@ -1085,19 +1085,6 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 	p.nextToken()
 
 	for !p.curTokenIs(token.RBRACE) && !p.curTokenIs(token.EOF) {
-		// Collect annotations before field/method/constructor
-		annotations := []string{}
-		for p.curTokenIs(token.AT) {
-			p.nextToken() // consume @
-			if !p.curTokenIs(token.IDENT) {
-				msg := "expected annotation name after @"
-				p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
-				return nil
-			}
-			annotations = append(annotations, p.curToken.Literal)
-			p.nextToken() // consume annotation name
-		}
-
 		// Parse field, method, or constructor
 		if !p.curTokenIs(token.IDENT) && !p.curTokenIs(token.CONSTRUCTOR) {
 			msg := "expected field, method, or constructor name in model"
@@ -1171,6 +1158,20 @@ func (p *Parser) parseModelLiteral() ast.Expression {
 			typeExpr := p.parseTypeExpression()
 			if typeExpr == nil {
 				return nil
+			}
+
+			// Collect annotations after the type (e.g., "a: float @id")
+			annotations := []string{}
+			for p.peekTokenIs(token.AT) {
+				p.nextToken() // move to @
+				p.nextToken() // consume @ and move to annotation name
+				if !p.curTokenIs(token.IDENT) {
+					msg := "expected annotation name after @"
+					p.errors = append(p.errors, NewParseError(p.curToken.Line, p.curToken.Column, msg))
+					return nil
+				}
+				annotations = append(annotations, p.curToken.Literal)
+				// Stay at annotation name; loop will check if peek is another @
 			}
 
 			field := &ast.ModelField{
