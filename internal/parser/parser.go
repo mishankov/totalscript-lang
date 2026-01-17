@@ -301,12 +301,15 @@ func (p *Parser) parseConstStatement() *ast.ConstStatement {
 func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	stmt := &ast.ImportStatement{Token: p.curToken}
 
-	// Expect a string literal for the module path
-	if !p.expectPeek(token.STRING) {
+	// Parse the module path - only unquoted imports supported
+	p.nextToken()
+
+	// Unquoted import: import math or import ./utils
+	stmt.Path = p.parseImportPath()
+	if stmt.Path == "" {
+		p.addError("expected import path (identifier or relative path)")
 		return nil
 	}
-
-	stmt.Path = p.curToken.Literal
 
 	// Check for optional 'as' clause
 	if p.peekTokenIs(token.AS) {
@@ -322,6 +325,85 @@ func (p *Parser) parseImportStatement() *ast.ImportStatement {
 	}
 
 	return stmt
+}
+
+// parseImportPath parses an unquoted import path (e.g., "math", "./utils", "./lib/helpers").
+// It handles both simple identifiers and relative paths starting with "./".
+// After parsing, curToken is positioned at the last token of the path.
+func (p *Parser) parseImportPath() string {
+	var path string
+
+	// Check if it's a relative path starting with "./"
+	if p.curTokenIs(token.DOT) && p.peekTokenIs(token.SLASH) {
+		path = "."
+		p.nextToken() // consume DOT, now at SLASH
+
+		// Build the path by consuming SLASH, IDENT, and DOT tokens
+		for {
+			if p.curTokenIs(token.SLASH) {
+				path += "/"
+				p.nextToken() // consume SLASH, now at IDENT (hopefully)
+
+				if p.curTokenIs(token.IDENT) {
+					path += p.curToken.Literal
+
+					// Check what comes next
+					if p.peekTokenIs(token.SLASH) {
+						p.nextToken() // consume IDENT, move to next SLASH
+						continue
+					} else if p.peekTokenIs(token.DOT) {
+						p.nextToken() // consume IDENT, move to DOT
+						// Continue to handle the DOT
+					} else {
+						// End of path, stay at IDENT
+						break
+					}
+				} else {
+					// Invalid path - expected identifier after slash
+					return ""
+				}
+			}
+
+			// Handle dots in the path (e.g., ".tsl" extension)
+			if p.curTokenIs(token.DOT) {
+				path += "."
+				p.nextToken() // consume DOT
+
+				if p.curTokenIs(token.IDENT) {
+					path += p.curToken.Literal
+
+					// Check if there's more to parse
+					if p.peekTokenIs(token.SLASH) {
+						p.nextToken() // consume IDENT, move to next SLASH
+						continue
+					} else if p.peekTokenIs(token.DOT) {
+						p.nextToken() // consume IDENT, move to next DOT
+						continue
+					} else {
+						// End of path, stay at IDENT
+						break
+					}
+				} else {
+					// Invalid path - expected identifier after dot
+					return ""
+				}
+			}
+
+			// If we get here, we're done
+			break
+		}
+
+		return path
+	}
+
+	// Simple identifier: import math
+	if p.curTokenIs(token.IDENT) {
+		path = p.curToken.Literal
+		return path
+	}
+
+	// Invalid import path
+	return ""
 }
 
 // computeModuleName extracts the module name from an import path.
