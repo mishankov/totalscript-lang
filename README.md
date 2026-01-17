@@ -12,8 +12,8 @@ import db
 var server = http.Server()
 
 const AddOp = model {
-    @id a: float
-    @id b: float
+    a: float @id
+    b: float @id
     result: float
 }
 

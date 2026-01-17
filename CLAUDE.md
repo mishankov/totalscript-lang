@@ -351,7 +351,7 @@ The following features from `specification.md` are fully implemented and tested:
 - **Model persistence**: Save and load model instances with automatic UUID generation
 - **Save operations**: `db.save(instance)` for single save, `db.saveAll([instances])` for batch
 - **@id annotation**: Mark fields with `@id` for composite primary keys and upsert logic
-  - Example: `const User = model { @id email: string, name: string }`
+  - Example: `const User = model { email: string @id, name: string }`
   - Multiple @id fields supported for composite keys
   - Upsert: Save with same @id values updates existing record instead of creating new
 - **Query system**: `db.find(Model) { conditions } [modifiers]` with rich syntax

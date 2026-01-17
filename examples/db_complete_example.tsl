@@ -15,7 +15,7 @@ const Point = model {
 }
 
 const User = model {
-  @id email: string
+  email: string @id
   name: string
   age: integer
 }

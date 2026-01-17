@@ -35,7 +35,7 @@ server.post("/add", function(r: http.Request): http.Response {
 - Unknown types are caught early with clear error messages
 
 - [ ] Live reloading when code changes by default
-- [ ] Make annotaions after field declaration like 
+- [x] Make annotaions after field declaration like
 
 ```tsl
 const AddOp = model {
@@ -44,3 +44,5 @@ const AddOp = model {
     result: float
 }
 ```
+
+**FIXED!** Annotations now appear after the field type declaration.
