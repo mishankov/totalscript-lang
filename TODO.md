@@ -34,7 +34,7 @@ server.post("/add", function(r: http.Request): http.Response {
 - `validateTypeExists()` validates type annotations at function definition time
 - Unknown types are caught early with clear error messages
 
-- [ ] Live reloading when code changes by default
+- [x] Live reloading when code changes by default
 - [x] Make annotaions after field declaration like
 
 ```tsl
