@@ -331,79 +331,57 @@ func (p *Parser) parseImportStatement() *ast.ImportStatement {
 // It handles both simple identifiers and relative paths starting with "./".
 // After parsing, curToken is positioned at the last token of the path.
 func (p *Parser) parseImportPath() string {
-	var path string
-
-	// Check if it's a relative path starting with "./"
-	if p.curTokenIs(token.DOT) && p.peekTokenIs(token.SLASH) {
-		path = "."
-		p.nextToken() // consume DOT, now at SLASH
-
-		// Build the path by consuming SLASH, IDENT, and DOT tokens
-		for {
-			if p.curTokenIs(token.SLASH) {
-				path += "/"
-				p.nextToken() // consume SLASH, now at IDENT (hopefully)
-
-				if p.curTokenIs(token.IDENT) {
-					path += p.curToken.Literal
-
-					// Check what comes next
-					if p.peekTokenIs(token.SLASH) {
-						p.nextToken() // consume IDENT, move to next SLASH
-						continue
-					} else if p.peekTokenIs(token.DOT) {
-						p.nextToken() // consume IDENT, move to DOT
-						// Continue to handle the DOT
-					} else {
-						// End of path, stay at IDENT
-						break
-					}
-				} else {
-					// Invalid path - expected identifier after slash
-					return ""
-				}
-			}
-
-			// Handle dots in the path (e.g., ".tsl" extension)
-			if p.curTokenIs(token.DOT) {
-				path += "."
-				p.nextToken() // consume DOT
-
-				if p.curTokenIs(token.IDENT) {
-					path += p.curToken.Literal
-
-					// Check if there's more to parse
-					if p.peekTokenIs(token.SLASH) {
-						p.nextToken() // consume IDENT, move to next SLASH
-						continue
-					} else if p.peekTokenIs(token.DOT) {
-						p.nextToken() // consume IDENT, move to next DOT
-						continue
-					} else {
-						// End of path, stay at IDENT
-						break
-					}
-				} else {
-					// Invalid path - expected identifier after dot
-					return ""
-				}
-			}
-
-			// If we get here, we're done
-			break
-		}
-
-		return path
-	}
-
 	// Simple identifier: import math
 	if p.curTokenIs(token.IDENT) {
-		path = p.curToken.Literal
-		return path
+		return p.curToken.Literal
 	}
 
-	// Invalid import path
-	return ""
+	// Relative path starting with "./"
+	if !p.curTokenIs(token.DOT) || !p.peekTokenIs(token.SLASH) {
+		return "" // Invalid import path
+	}
+
+	var builder strings.Builder
+	builder.WriteString(".")
+	p.nextToken() // consume DOT, now at SLASH
+
+	// Build the path by consuming SLASH, IDENT, and DOT tokens
+	for {
+		switch {
+		case p.curTokenIs(token.SLASH):
+			builder.WriteString("/")
+			p.nextToken() // consume SLASH
+
+			if !p.curTokenIs(token.IDENT) {
+				return "" // Invalid path - expected identifier after slash
+			}
+
+			builder.WriteString(p.curToken.Literal)
+
+			// Check if there's more to parse
+			if p.peekTokenIs(token.SLASH) || p.peekTokenIs(token.DOT) {
+				p.nextToken() // consume IDENT, move to next token
+			}
+
+		case p.curTokenIs(token.DOT):
+			builder.WriteString(".")
+			p.nextToken() // consume DOT
+
+			if !p.curTokenIs(token.IDENT) {
+				return "" // Invalid path - expected identifier after dot
+			}
+
+			builder.WriteString(p.curToken.Literal)
+
+			// Check if there's more to parse
+			if p.peekTokenIs(token.SLASH) || p.peekTokenIs(token.DOT) {
+				p.nextToken() // consume IDENT, move to next token
+			}
+
+		default:
+			return builder.String()
+		}
+	}
 }
 
 // computeModuleName extracts the module name from an import path.
