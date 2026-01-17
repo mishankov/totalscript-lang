@@ -9,6 +9,7 @@ import (
 )
 
 func TestEvalIntegerExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int64
@@ -37,6 +38,7 @@ func TestEvalIntegerExpression(t *testing.T) {
 }
 
 func TestEvalFloatExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected float64
@@ -58,6 +60,7 @@ func TestEvalFloatExpression(t *testing.T) {
 }
 
 func TestEvalBooleanExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected bool
@@ -90,6 +93,7 @@ func TestEvalBooleanExpression(t *testing.T) {
 }
 
 func TestBangOperator(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected bool
@@ -109,6 +113,7 @@ func TestBangOperator(t *testing.T) {
 }
 
 func TestIfExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -134,6 +139,7 @@ func TestIfExpression(t *testing.T) {
 }
 
 func TestReturnStatements(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int64
@@ -159,6 +165,7 @@ func TestReturnStatements(t *testing.T) {
 }
 
 func TestErrorHandling(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input           string
 		expectedMessage string
@@ -222,6 +229,7 @@ func TestErrorHandling(t *testing.T) {
 }
 
 func TestVarStatements(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int64
@@ -238,6 +246,7 @@ func TestVarStatements(t *testing.T) {
 }
 
 func TestFunctionObject(t *testing.T) {
+	t.Parallel()
 	input := "function(x) { x + 2 }"
 
 	evaluated := testEval(input)
@@ -263,6 +272,7 @@ func TestFunctionObject(t *testing.T) {
 }
 
 func TestFunctionApplication(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int64
@@ -281,6 +291,7 @@ func TestFunctionApplication(t *testing.T) {
 }
 
 func TestClosures(t *testing.T) {
+	t.Parallel()
 	input := `
 	var newAdder = function(x) {
 		function(y) { x + y }
@@ -293,6 +304,7 @@ func TestClosures(t *testing.T) {
 }
 
 func TestStringLiteral(t *testing.T) {
+	t.Parallel()
 	input := `"Hello World!"`
 
 	evaluated := testEval(input)
@@ -307,6 +319,7 @@ func TestStringLiteral(t *testing.T) {
 }
 
 func TestStringConcatenation(t *testing.T) {
+	t.Parallel()
 	input := `"Hello" + " " + "World!"`
 
 	evaluated := testEval(input)
@@ -321,6 +334,7 @@ func TestStringConcatenation(t *testing.T) {
 }
 
 func TestArrayLiterals(t *testing.T) {
+	t.Parallel()
 	input := "[1, 2 * 2, 3 + 3]"
 
 	evaluated := testEval(input)
@@ -340,6 +354,7 @@ func TestArrayLiterals(t *testing.T) {
 }
 
 func TestArrayIndexExpressions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -398,6 +413,7 @@ func TestArrayIndexExpressions(t *testing.T) {
 }
 
 func TestMapLiterals(t *testing.T) {
+	t.Parallel()
 	input := `{"one": 10 - 9, "two": 1 + 1, "three": 6 // 2}`
 
 	evaluated := testEval(input)
@@ -427,6 +443,7 @@ func TestMapLiterals(t *testing.T) {
 }
 
 func TestMapIndexExpressions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -461,6 +478,7 @@ func TestMapIndexExpressions(t *testing.T) {
 }
 
 func TestWhileLoop(t *testing.T) {
+	t.Parallel()
 	input := `
 	var i = 0
 	var sum = 0
@@ -476,6 +494,7 @@ func TestWhileLoop(t *testing.T) {
 }
 
 func TestForLoop(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected int64
@@ -513,6 +532,7 @@ func TestForLoop(t *testing.T) {
 }
 
 func TestRangeExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input        string
 		expectedLen  int
@@ -541,6 +561,7 @@ func TestRangeExpression(t *testing.T) {
 }
 
 func TestArrayIndexAssignment(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -587,6 +608,7 @@ func TestArrayIndexAssignment(t *testing.T) {
 }
 
 func TestMapIndexAssignment(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -609,6 +631,7 @@ func TestMapIndexAssignment(t *testing.T) {
 }
 
 func TestModelFieldAssignment(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Point = model {
 		x: float
@@ -625,6 +648,7 @@ func TestModelFieldAssignment(t *testing.T) {
 }
 
 func TestModelFieldCompoundAssignment(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Counter = model {
 		value: integer
@@ -640,6 +664,7 @@ func TestModelFieldCompoundAssignment(t *testing.T) {
 }
 
 func TestArraySlicing(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected []int
@@ -663,6 +688,7 @@ func TestArraySlicing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 			array, ok := evaluated.(*Array)
 			if !ok {
@@ -683,6 +709,7 @@ func TestArraySlicing(t *testing.T) {
 }
 
 func TestTypeEnforcement(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input       string
 		shouldError bool
@@ -746,6 +773,7 @@ func TestTypeEnforcement(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 
 			if tt.shouldError {
@@ -765,6 +793,7 @@ func TestTypeEnforcement(t *testing.T) {
 }
 
 func TestModelTypeEnforcement(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Point = model {
 		x: float
@@ -786,6 +815,7 @@ func TestModelTypeEnforcement(t *testing.T) {
 }
 
 func TestEnumTypeEnforcement(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Status = enum {
 		OK = 200
@@ -807,6 +837,7 @@ func TestEnumTypeEnforcement(t *testing.T) {
 }
 
 func TestReassignmentTypeValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input       string
 		shouldError bool
@@ -826,6 +857,7 @@ func TestReassignmentTypeValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 
 			if tt.shouldError {
@@ -845,6 +877,7 @@ func TestReassignmentTypeValidation(t *testing.T) {
 }
 
 func TestFunctionParameterTypeValidation(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input       string
 		shouldError bool
@@ -905,6 +938,7 @@ func TestFunctionParameterTypeValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input[:50], func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 
 			if tt.shouldError {
@@ -987,6 +1021,7 @@ func testNullObject(t *testing.T, obj Object) bool {
 }
 
 func TestEnumValues(t *testing.T) {
+	t.Parallel()
 	input := `
 	const HttpStatus = enum {
 		OK = 200
@@ -1012,6 +1047,7 @@ func TestEnumValues(t *testing.T) {
 //
 //nolint:godox // TODO: Fix the test environment setup to properly handle enum methods
 func TestEnumFromValue(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping due to test environment issues - feature works in practice")
 }
 
@@ -1021,18 +1057,21 @@ func TestEnumFromValue(t *testing.T) {
 //
 //nolint:godox // TODO: Fix test environment setup
 func TestEnumValueProperty(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping due to test environment issues - feature works in practice")
 }
 
 // TestEnumComparison - Skipped due to test environment issues
 // Feature works in practice (see examples/enums.tsl)
 func TestEnumComparison(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping due to test environment issues - feature works in practice")
 }
 
 // TestEnumIsOperator - Skipped due to test environment issues
 // Feature works in practice (see examples/enums.tsl)
 func TestEnumIsOperator(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping due to test environment issues - feature works in practice")
 }
 
@@ -1041,15 +1080,18 @@ func TestEnumIsOperator(t *testing.T) {
 //
 //nolint:godox // TODO: Investigate and fix switch statement evaluation
 func TestSwitchStatement(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping - switch statement has implementation issues")
 }
 
 // TestSwitchWithEnum - Skipped (depends on TestSwitchStatement)
 func TestSwitchWithEnum(t *testing.T) {
+	t.Parallel()
 	t.Skip("Skipping - switch statement has implementation issues")
 }
 
 func TestPowerOperator(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected interface{}
@@ -1069,6 +1111,7 @@ func TestPowerOperator(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 
 			switch expected := tt.expected.(type) {
@@ -1082,6 +1125,7 @@ func TestPowerOperator(t *testing.T) {
 }
 
 func TestMixedTypeArithmetic(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected float64
@@ -1098,6 +1142,7 @@ func TestMixedTypeArithmetic(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 			testFloatObject(t, evaluated, tt.expected)
 		})
@@ -1105,6 +1150,7 @@ func TestMixedTypeArithmetic(t *testing.T) {
 }
 
 func TestModelMethods(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Rectangle = model {
 		width: float
@@ -1128,6 +1174,7 @@ func TestModelMethods(t *testing.T) {
 }
 
 func TestModelMethodWithThis(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Point = model {
 		x: float
@@ -1147,6 +1194,7 @@ func TestModelMethodWithThis(t *testing.T) {
 }
 
 func TestModelMultipleConstructors(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input       string
 		expected    float64
@@ -1213,6 +1261,7 @@ func TestModelMultipleConstructors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.description, func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 			testFloatObject(t, evaluated, tt.expected)
 		})
@@ -1220,6 +1269,7 @@ func TestModelMultipleConstructors(t *testing.T) {
 }
 
 func TestNestedModels(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Point = model {
 		x: float
@@ -1241,6 +1291,7 @@ func TestNestedModels(t *testing.T) {
 }
 
 func TestModelIsOperator(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Point = model {
 		x: float
@@ -1256,6 +1307,7 @@ func TestModelIsOperator(t *testing.T) {
 }
 
 func TestForInWithIndex(t *testing.T) {
+	t.Parallel()
 	input := `
 	var sum = 0
 	for index, value in [10, 20, 30] {
@@ -1269,6 +1321,7 @@ func TestForInWithIndex(t *testing.T) {
 }
 
 func TestForInMapIteration(t *testing.T) {
+	t.Parallel()
 	input := `
 	var sum = 0
 	for key, value in {"a": 1, "b": 2, "c": 3} {
@@ -1282,6 +1335,7 @@ func TestForInMapIteration(t *testing.T) {
 }
 
 func TestBreakInForIn(t *testing.T) {
+	t.Parallel()
 	input := `
 	var sum = 0
 	for item in [1, 2, 3, 4, 5] {
@@ -1298,6 +1352,7 @@ func TestBreakInForIn(t *testing.T) {
 }
 
 func TestContinueInForIn(t *testing.T) {
+	t.Parallel()
 	input := `
 	var sum = 0
 	for item in [1, 2, 3, 4, 5] {
@@ -1314,6 +1369,7 @@ func TestContinueInForIn(t *testing.T) {
 }
 
 func TestTypeCoercionInVariable(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected float64
@@ -1325,6 +1381,7 @@ func TestTypeCoercionInVariable(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
+			t.Parallel()
 			evaluated := testEval(tt.input)
 			testFloatObject(t, evaluated, tt.expected)
 		})
@@ -1332,6 +1389,7 @@ func TestTypeCoercionInVariable(t *testing.T) {
 }
 
 func TestTypeCoercionInFunctionParameter(t *testing.T) {
+	t.Parallel()
 	input := `
 	const square = function(x: float): float {
 		return x * x
@@ -1345,6 +1403,7 @@ func TestTypeCoercionInFunctionParameter(t *testing.T) {
 }
 
 func TestTypeCoercionInModelField(t *testing.T) {
+	t.Parallel()
 	input := `
 	const Box = model {
 		size: float
@@ -1359,6 +1418,7 @@ func TestTypeCoercionInModelField(t *testing.T) {
 }
 
 func TestTypeCoercionInArray(t *testing.T) {
+	t.Parallel()
 	input := `
 	var arr: array<float> = [1, 2, 3]
 	arr[0] + arr[1] + arr[2]

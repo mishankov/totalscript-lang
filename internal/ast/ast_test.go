@@ -7,6 +7,7 @@ import (
 )
 
 func TestString(t *testing.T) {
+	t.Parallel()
 	program := &Program{
 		Statements: []Statement{
 			&VarStatement{
@@ -30,6 +31,7 @@ func TestString(t *testing.T) {
 }
 
 func TestVarStatement(t *testing.T) {
+	t.Parallel()
 	stmt := &VarStatement{
 		Token: token.Token{Type: token.VAR, Literal: "var"},
 		Name: &Identifier{
@@ -57,6 +59,7 @@ func TestVarStatement(t *testing.T) {
 }
 
 func TestConstStatement(t *testing.T) {
+	t.Parallel()
 	stmt := &ConstStatement{
 		Token: token.Token{Type: token.CONST, Literal: "const"},
 		Name: &Identifier{
@@ -80,6 +83,7 @@ func TestConstStatement(t *testing.T) {
 }
 
 func TestReturnStatement(t *testing.T) {
+	t.Parallel()
 	stmt := &ReturnStatement{
 		Token: token.Token{Type: token.RETURN, Literal: "return"},
 		ReturnValue: &IntegerLiteral{
@@ -99,6 +103,7 @@ func TestReturnStatement(t *testing.T) {
 }
 
 func TestInfixExpression(t *testing.T) {
+	t.Parallel()
 	expr := &InfixExpression{
 		Token: token.Token{Type: token.PLUS, Literal: "+"},
 		Left: &IntegerLiteral{
@@ -119,6 +124,7 @@ func TestInfixExpression(t *testing.T) {
 }
 
 func TestPrefixExpression(t *testing.T) {
+	t.Parallel()
 	expr := &PrefixExpression{
 		Token:    token.Token{Type: token.MINUS, Literal: "-"},
 		Operator: "-",
@@ -135,6 +141,7 @@ func TestPrefixExpression(t *testing.T) {
 }
 
 func TestArrayLiteral(t *testing.T) {
+	t.Parallel()
 	arr := &ArrayLiteral{
 		Token: token.Token{Type: token.LBRACKET, Literal: "["},
 		Elements: []Expression{
@@ -160,6 +167,7 @@ func TestArrayLiteral(t *testing.T) {
 }
 
 func TestTypeExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		typeExpr *TypeExpression
@@ -199,6 +207,7 @@ func TestTypeExpression(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := tt.typeExpr.String()
 			if result != tt.expected {
 				t.Errorf("type.String() wrong. expected=%q, got=%q", tt.expected, result)

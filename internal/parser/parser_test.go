@@ -8,6 +8,7 @@ import (
 )
 
 func TestVarStatements(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -20,6 +21,7 @@ func TestVarStatements(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			l := lexer.New(tt.input)
 			p := New(l)
 			program := p.ParseProgram()
@@ -39,6 +41,7 @@ func TestVarStatements(t *testing.T) {
 }
 
 func TestConstStatements(t *testing.T) {
+	t.Parallel()
 	input := `const x = 5`
 
 	l := lexer.New(input)
@@ -62,6 +65,7 @@ func TestConstStatements(t *testing.T) {
 }
 
 func TestImportStatements(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name           string
 		input          string
@@ -79,6 +83,7 @@ func TestImportStatements(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			l := lexer.New(tt.input)
 			p := New(l)
 			program := p.ParseProgram()
@@ -110,6 +115,7 @@ func TestImportStatements(t *testing.T) {
 }
 
 func TestReturnStatements(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		input    string
@@ -121,6 +127,7 @@ func TestReturnStatements(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			l := lexer.New(tt.input)
 			p := New(l)
 			program := p.ParseProgram()
@@ -140,6 +147,7 @@ func TestReturnStatements(t *testing.T) {
 }
 
 func TestIntegerLiteralExpression(t *testing.T) {
+	t.Parallel()
 	input := "5"
 
 	l := lexer.New(input)
@@ -169,6 +177,7 @@ func TestIntegerLiteralExpression(t *testing.T) {
 }
 
 func TestFloatLiteralExpression(t *testing.T) {
+	t.Parallel()
 	input := "3.14"
 
 	l := lexer.New(input)
@@ -198,6 +207,7 @@ func TestFloatLiteralExpression(t *testing.T) {
 }
 
 func TestStringLiteralExpression(t *testing.T) {
+	t.Parallel()
 	input := `"hello world"`
 
 	l := lexer.New(input)
@@ -217,6 +227,7 @@ func TestStringLiteralExpression(t *testing.T) {
 }
 
 func TestBooleanExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected bool
@@ -244,6 +255,7 @@ func TestBooleanExpression(t *testing.T) {
 }
 
 func TestPrefixExpressions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		operator string
@@ -284,6 +296,7 @@ func TestPrefixExpressions(t *testing.T) {
 }
 
 func TestInfixExpressions(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input      string
 		leftValue  int64
@@ -329,6 +342,7 @@ func TestInfixExpressions(t *testing.T) {
 }
 
 func TestOperatorPrecedence(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input    string
 		expected string
@@ -368,6 +382,7 @@ func TestOperatorPrecedence(t *testing.T) {
 }
 
 func TestIfExpression(t *testing.T) {
+	t.Parallel()
 	input := `if x < y { x }`
 
 	l := lexer.New(input)
@@ -402,6 +417,7 @@ func TestIfExpression(t *testing.T) {
 }
 
 func TestFunctionLiteralParsing(t *testing.T) {
+	t.Parallel()
 	input := `function(x, y) { x + y }`
 
 	l := lexer.New(input)
@@ -446,6 +462,7 @@ func TestFunctionLiteralParsing(t *testing.T) {
 }
 
 func TestCallExpressionParsing(t *testing.T) {
+	t.Parallel()
 	input := "add(1, 2 * 3, 4 + 5)"
 
 	l := lexer.New(input)
@@ -476,6 +493,7 @@ func TestCallExpressionParsing(t *testing.T) {
 }
 
 func TestArrayLiterals(t *testing.T) {
+	t.Parallel()
 	input := "[1, 2 * 2, 3 + 3]"
 
 	l := lexer.New(input)
@@ -499,6 +517,7 @@ func TestArrayLiterals(t *testing.T) {
 }
 
 func TestIndexExpressions(t *testing.T) {
+	t.Parallel()
 	input := "myArray[1 + 1]"
 
 	l := lexer.New(input)
@@ -526,6 +545,7 @@ func TestIndexExpressions(t *testing.T) {
 }
 
 func TestMapLiterals(t *testing.T) {
+	t.Parallel()
 	input := `{"one": 1, "two": 2, "three": 3}`
 
 	l := lexer.New(input)
@@ -545,6 +565,7 @@ func TestMapLiterals(t *testing.T) {
 }
 
 func TestWhileStatement(t *testing.T) {
+	t.Parallel()
 	input := `while x < 10 { x = x + 1 }`
 
 	l := lexer.New(input)
@@ -569,6 +590,7 @@ func TestWhileStatement(t *testing.T) {
 }
 
 func TestRangeExpression(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		input     string
 		expected  string
@@ -603,6 +625,7 @@ func TestRangeExpression(t *testing.T) {
 }
 
 func TestMemberExpression(t *testing.T) {
+	t.Parallel()
 	input := "obj.property"
 
 	l := lexer.New(input)

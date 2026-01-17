@@ -3,6 +3,7 @@ package token
 import "testing"
 
 func TestLookupIdent(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		ident    string
@@ -45,6 +46,7 @@ func TestLookupIdent(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			result := LookupIdent(tt.ident)
 			if result != tt.expected {
 				t.Errorf("LookupIdent(%q) = %v, want %v", tt.ident, result, tt.expected)
@@ -54,6 +56,7 @@ func TestLookupIdent(t *testing.T) {
 }
 
 func TestTokenString(t *testing.T) {
+	t.Parallel()
 	tok := Token{
 		Type:    INTEGER,
 		Literal: "42",

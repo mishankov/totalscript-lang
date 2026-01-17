@@ -7,6 +7,7 @@ import (
 )
 
 func TestNextToken_SimpleTokens(t *testing.T) {
+	t.Parallel()
 	input := `=+-*/%(){}[],;:.`
 
 	tests := []struct {
@@ -50,6 +51,7 @@ func TestNextToken_SimpleTokens(t *testing.T) {
 }
 
 func TestNextToken_TwoCharTokens(t *testing.T) {
+	t.Parallel()
 	input := `== != <= >= && || .. ** // += -= *= /= %=`
 
 	tests := []struct {
@@ -91,6 +93,7 @@ func TestNextToken_TwoCharTokens(t *testing.T) {
 }
 
 func TestNextToken_ThreeCharTokens(t *testing.T) {
+	t.Parallel()
 	input := `..=`
 
 	tests := []struct {
@@ -119,6 +122,7 @@ func TestNextToken_ThreeCharTokens(t *testing.T) {
 }
 
 func TestNextToken_Numbers(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		input           string
@@ -136,6 +140,7 @@ func TestNextToken_Numbers(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			l := New(tt.input)
 			tok := l.NextToken()
 
@@ -151,6 +156,7 @@ func TestNextToken_Numbers(t *testing.T) {
 }
 
 func TestNextToken_Strings(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name            string
 		input           string
@@ -167,6 +173,7 @@ func TestNextToken_Strings(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			l := New(tt.input)
 			tok := l.NextToken()
 
@@ -182,6 +189,7 @@ func TestNextToken_Strings(t *testing.T) {
 }
 
 func TestNextToken_IdentifiersAndKeywords(t *testing.T) {
+	t.Parallel()
 	input := `var const function model enum if else switch case default
 	for while in return break continue import as this is true false null`
 
@@ -233,6 +241,7 @@ func TestNextToken_IdentifiersAndKeywords(t *testing.T) {
 }
 
 func TestNextToken_Identifiers(t *testing.T) {
+	t.Parallel()
 	input := `foo bar myVar my_var var1 _private`
 
 	tests := []struct {
@@ -266,6 +275,7 @@ func TestNextToken_Identifiers(t *testing.T) {
 }
 
 func TestNextToken_SingleLineComments(t *testing.T) {
+	t.Parallel()
 	input := `# This is a comment
 var x = 5 # inline comment
 # another comment`
@@ -299,6 +309,7 @@ var x = 5 # inline comment
 }
 
 func TestNextToken_MultiLineComments(t *testing.T) {
+	t.Parallel()
 	input := `###
 This is a
 multi-line comment
@@ -334,6 +345,7 @@ var x = 5`
 }
 
 func TestNextToken_LineAndColumn(t *testing.T) {
+	t.Parallel()
 	input := `var x = 5
 var y = 10`
 
@@ -382,6 +394,7 @@ var y = 10`
 }
 
 func TestNextToken_CompleteProgram(t *testing.T) {
+	t.Parallel()
 	input := `var a = 3
 const add = function (x, y) {
   return x + y
@@ -442,6 +455,7 @@ var result = add(5, 10)`
 }
 
 func TestNextToken_SpecialCharacters(t *testing.T) {
+	t.Parallel()
 	input := `? | @ !`
 
 	tests := []struct {

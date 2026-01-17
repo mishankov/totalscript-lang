@@ -69,12 +69,10 @@ linters:
         linters:
           - dupl
           - err113
-          - errcheck
           - forcetypeassert  # Tests can use unchecked assertions
           - goconst
           - gosec
           - nilnil
-          - paralleltest  # Not critical for MVP
           - perfsprint    # Performance optimizations not critical in tests
           - testpackage   # Internal tests need access to private members
           - unparam       # Test helper return values may not always be used
@@ -130,11 +128,6 @@ linters:
       - text: ".*"
         linters:
           - prealloc
-
-      # Accept Go 1.22 range suggestion but don't enforce
-      - text: "for loop can be changed to use an integer range"
-        linters:
-          - intrange
 
       # Interface method implementations don't need individual comments
       # The interfaces themselves (Node, Object) are documented with method descriptions

@@ -736,7 +736,7 @@ func evalIntegerInfixExpression(operator string, left, right Object) Object {
 		return &Integer{Value: leftVal % rightVal}
 	case "**":
 		result := int64(1)
-		for i := int64(0); i < rightVal; i++ {
+		for range rightVal {
 			result *= leftVal
 		}
 		return &Integer{Value: result}
@@ -1761,8 +1761,8 @@ func loadInstance(state *DBState, model *Model, entityID string) Object {
 func sortInstances(arr *Array, fieldName string, descending bool) {
 	// Simple bubble sort for now
 	n := len(arr.Elements)
-	for i := 0; i < n-1; i++ {
-		for j := 0; j < n-i-1; j++ {
+	for i := range n - 1 {
+		for j := range n - i - 1 {
 			inst1, ok1 := arr.Elements[j].(*ModelInstance)
 			inst2, ok2 := arr.Elements[j+1].(*ModelInstance)
 			if !ok1 || !ok2 {
