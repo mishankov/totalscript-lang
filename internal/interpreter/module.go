@@ -26,6 +26,7 @@ import (
 // ModuleCache stores loaded modules to prevent re-evaluation.
 type ModuleCache struct {
 	modules map[string]*Module
+	mu      sync.RWMutex
 }
 
 // Global module cache instance.
@@ -35,12 +36,39 @@ var moduleCache = &ModuleCache{
 	modules: make(map[string]*Module),
 }
 
+// GetLoadedFileModules returns all loaded file module paths.
+// Only returns file modules (those with absolute paths), not stdlib modules.
+func GetLoadedFileModules() []string {
+	moduleCache.mu.RLock()
+	defer moduleCache.mu.RUnlock()
+
+	var paths []string
+	for path := range moduleCache.modules {
+		// File modules have absolute paths, stdlib modules have simple names
+		if filepath.IsAbs(path) {
+			paths = append(paths, path)
+		}
+	}
+	return paths
+}
+
+// ClearModuleCache clears all loaded modules from the cache.
+// This should be called before reloading in watch mode.
+func ClearModuleCache() {
+	moduleCache.mu.Lock()
+	defer moduleCache.mu.Unlock()
+	moduleCache.modules = make(map[string]*Module)
+}
+
 // resolveModule resolves and loads a module by path.
 // Returns the loaded module or an error object.
 // currentFile is the absolute path of the file doing the import (for relative resolution).
 func resolveModule(path string, currentFile string) Object {
 	// Check cache first
-	if mod, exists := moduleCache.modules[path]; exists {
+	moduleCache.mu.RLock()
+	mod, exists := moduleCache.modules[path]
+	moduleCache.mu.RUnlock()
+	if exists {
 		return mod
 	}
 
@@ -57,7 +85,10 @@ func resolveModule(path string, currentFile string) Object {
 // loadStdlibModule loads a standard library module by name.
 func loadStdlibModule(name string) Object {
 	// Check cache first
-	if mod, exists := moduleCache.modules[name]; exists {
+	moduleCache.mu.RLock()
+	mod, exists := moduleCache.modules[name]
+	moduleCache.mu.RUnlock()
+	if exists {
 		return mod
 	}
 
@@ -82,7 +113,9 @@ func loadStdlibModule(name string) Object {
 	}
 
 	// Cache the module
+	moduleCache.mu.Lock()
 	moduleCache.modules[name] = module
+	moduleCache.mu.Unlock()
 
 	return module
 }
@@ -437,7 +470,10 @@ func loadFileModule(path string, currentFile string) Object {
 	}
 
 	// Check cache with absolute path
-	if mod, exists := moduleCache.modules[absPath]; exists {
+	moduleCache.mu.RLock()
+	mod, exists := moduleCache.modules[absPath]
+	moduleCache.mu.RUnlock()
+	if exists {
 		return mod
 	}
 
@@ -482,9 +518,11 @@ func loadFileModule(path string, currentFile string) Object {
 	}
 
 	// Cache the module
+	moduleCache.mu.Lock()
 	moduleCache.modules[absPath] = module
 	// Also cache with the original path for consistency
 	moduleCache.modules[path] = module
+	moduleCache.mu.Unlock()
 
 	return module
 }
