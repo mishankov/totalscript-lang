@@ -19,33 +19,26 @@ import (
 
 const version = "0.1.0"
 
-var (
-	noWatch     bool
-	versionFlag bool
-	helpFlag    bool
-)
-
-func init() {
-	flag.BoolVar(&noWatch, "no-watch", false, "Disable live reloading (watch mode is enabled by default)")
-	flag.BoolVar(&versionFlag, "version", false, "Show version")
-	flag.BoolVar(&versionFlag, "v", false, "Show version (shorthand)")
-	flag.BoolVar(&helpFlag, "help", false, "Show help message")
-	flag.BoolVar(&helpFlag, "h", false, "Show help message (shorthand)")
-}
-
 func main() {
 	// Register methods for built-in types
 	stdlib.RegisterMethods()
 
+	// Define flags
+	noWatch := flag.Bool("no-watch", false, "Disable live reloading (watch mode is enabled by default)")
+	versionFlag := flag.Bool("version", false, "Show version")
+	vFlag := flag.Bool("v", false, "Show version (shorthand)")
+	helpFlag := flag.Bool("help", false, "Show help message")
+	hFlag := flag.Bool("h", false, "Show help message (shorthand)")
+
 	flag.Parse()
 
 	// Handle flags
-	if versionFlag {
+	if *versionFlag || *vFlag {
 		fmt.Printf("TotalScript %s\n", version)
 		os.Exit(0)
 	}
 
-	if helpFlag {
+	if *helpFlag || *hFlag {
 		printUsage()
 		os.Exit(0)
 	}
@@ -72,8 +65,8 @@ func main() {
 	}
 
 	// If watch mode is disabled, just run once
-	if noWatch {
-		runFile(absPath)
+	if *noWatch {
+		runFile(absPath, true)
 		return
 	}
 
@@ -107,11 +100,19 @@ func runWithWatch(absPath string) {
 		fmt.Fprintf(os.Stderr, "Error creating file watcher: %v\n", err)
 		os.Exit(1)
 	}
-	defer watcher.Close()
+	defer func() {
+		if err := watcher.Close(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error closing watcher: %v\n", err)
+		}
+	}()
 
 	// Add main file to watcher
 	if err := watcher.Add(absPath); err != nil {
 		fmt.Fprintf(os.Stderr, "Error watching file: %v\n", err)
+		// Close watcher before exit
+		if closeErr := watcher.Close(); closeErr != nil {
+			fmt.Fprintf(os.Stderr, "Error closing watcher: %v\n", closeErr)
+		}
 		os.Exit(1)
 	}
 
@@ -173,7 +174,7 @@ func runFileAndUpdateWatcher(absPath string, watcher *fsnotify.Watcher, watchedF
 	interpreter.ClearModuleCache()
 
 	// Run the file
-	runFile(absPath)
+	runFile(absPath, false)
 
 	// Get all loaded file modules after execution
 	loadedModules := interpreter.GetLoadedFileModules()
@@ -211,12 +212,12 @@ func runFileAndUpdateWatcher(absPath string, watcher *fsnotify.Watcher, watchedF
 	}
 }
 
-func runFile(absPath string) {
+func runFile(absPath string, exitOnError bool) {
 	// Read file
 	input, err := os.ReadFile(absPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading file: %v\n", err)
-		if noWatch {
+		if exitOnError {
 			os.Exit(1)
 		}
 		return
@@ -231,7 +232,7 @@ func runFile(absPath string) {
 
 	if len(p.Errors()) > 0 {
 		printParserErrors(p.Errors())
-		if noWatch {
+		if exitOnError {
 			os.Exit(1)
 		}
 		return
@@ -245,7 +246,7 @@ func runFile(absPath string) {
 
 	if result != nil && result.Type() == interpreter.ErrorObj {
 		fmt.Fprintf(os.Stderr, "%s\n", result.Inspect())
-		if noWatch {
+		if exitOnError {
 			os.Exit(1)
 		}
 		return
