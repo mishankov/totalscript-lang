@@ -2,6 +2,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -71,7 +72,10 @@ func main() {
 	}
 
 	// Run with live reloading
-	runWithWatch(absPath)
+	if err := runWithWatch(absPath); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
 }
 
 func printUsage() {
@@ -93,12 +97,11 @@ func printUsage() {
 	fmt.Println("  for changes and automatically reloads when changes are detected.")
 }
 
-func runWithWatch(absPath string) {
+func runWithWatch(absPath string) error {
 	// Create file watcher
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error creating file watcher: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("creating file watcher: %w", err)
 	}
 	defer func() {
 		if err := watcher.Close(); err != nil {
@@ -108,12 +111,7 @@ func runWithWatch(absPath string) {
 
 	// Add main file to watcher
 	if err := watcher.Add(absPath); err != nil {
-		fmt.Fprintf(os.Stderr, "Error watching file: %v\n", err)
-		// Close watcher before exit
-		if closeErr := watcher.Close(); closeErr != nil {
-			fmt.Fprintf(os.Stderr, "Error closing watcher: %v\n", closeErr)
-		}
-		os.Exit(1)
+		return fmt.Errorf("watching file: %w", err)
 	}
 
 	// Set up signal handling for graceful shutdown
@@ -140,11 +138,11 @@ func runWithWatch(absPath string) {
 		case <-sigChan:
 			// Graceful shutdown
 			fmt.Println("\nExiting...")
-			return
+			return nil
 
 		case event, ok := <-watcher.Events:
 			if !ok {
-				return
+				return errors.New("watcher events channel closed")
 			}
 
 			// Only respond to write and create events
@@ -162,7 +160,7 @@ func runWithWatch(absPath string) {
 
 		case err, ok := <-watcher.Errors:
 			if !ok {
-				return
+				return errors.New("watcher errors channel closed")
 			}
 			fmt.Fprintf(os.Stderr, "Watcher error: %v\n", err)
 		}
