@@ -20,6 +20,11 @@ import (
 
 const version = "0.1.0"
 
+var (
+	errWatcherEventsClosed = errors.New("watcher events channel closed")
+	errWatcherErrorsClosed = errors.New("watcher errors channel closed")
+)
+
 func main() {
 	// Register methods for built-in types
 	stdlib.RegisterMethods()
@@ -142,7 +147,7 @@ func runWithWatch(absPath string) error {
 
 		case event, ok := <-watcher.Events:
 			if !ok {
-				return errors.New("watcher events channel closed")
+				return errWatcherEventsClosed
 			}
 
 			// Only respond to write and create events
@@ -160,7 +165,7 @@ func runWithWatch(absPath string) error {
 
 		case err, ok := <-watcher.Errors:
 			if !ok {
-				return errors.New("watcher errors channel closed")
+				return errWatcherErrorsClosed
 			}
 			fmt.Fprintf(os.Stderr, "Watcher error: %v\n", err)
 		}
